@@ -970,7 +970,7 @@ document.querySelectorAll('.seg [data-mode]').forEach(b => b.addEventListener('c
 /* ---------- document ---------- */
 function setDoc(d){
   closePop();
-  activeCrit = validCrit(d.lastCrit || 'none');   // nouveau rapport : Non classé ; sinon la catégorie du dernier commentaire
+  activeCrit = validCrit(d.lastCrit || 'none');   // nouveau rapport : Autres commentaires ; sinon la catégorie du dernier commentaire
   d.id = d.id || uid(); d.ink = d.ink || []; d.grades = d.grades || {}; d.final = d.final || '';
   if (!undoStacks.has(d.id)) undoStacks.set(d.id, []);
   inkUndo = undoStacks.get(d.id);
@@ -1338,7 +1338,7 @@ function renderGeneral(){
 $('#genText').addEventListener('input', e => { if (doc){ doc.general.text = e.target.value; changed(); } });
 
 /* ---------- critères (grille d'évaluation) ---------- */
-const NONE = {id: 'none', name: 'Non classé', color: '#16a34a'};   // vert par défaut, modifiable avec ✎
+const NONE = {id: 'none', name: 'Autres commentaires', color: '#16a34a'};   // vert par défaut, modifiable avec ✎
 const PALETTE = ['#2563eb', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#4f46e5', '#dc2626', '#0d9488'];
 const COLORS = ['#c2410c', '#dc2626', '#db2777', '#9333ea', '#4f46e5', '#2563eb', '#0891b2', '#0d9488', '#16a34a', '#ca8a04', '#6b7280'];   // choix proposés (rose et violet inclus)
 const isHex = v => /^#[0-9a-f]{6}$/i.test(v || '');
@@ -1404,7 +1404,7 @@ function updateEvalCounts(){}
 let critEdit = null;
 function openCritDialog(c){
   critEdit = c ? {...c} : {id: uid(), name: '', color: nextColor(), isNew: true};
-  $('#critTitle').textContent = critEdit.isNew ? 'Nouvelle catégorie' : critEdit.id === 'none' ? 'Couleur de « Non classé »' : 'Modifier la catégorie';
+  $('#critTitle').textContent = critEdit.isNew ? 'Nouvelle catégorie' : critEdit.id === 'none' ? 'Couleur de « Autres commentaires »' : 'Modifier la catégorie';
   $('#critName').value = critEdit.name; $('#critName').disabled = critEdit.id === 'none'; renderSwatches();
   $('#critDlg').showModal(); setTimeout(() => $('#critName').focus(), 0);
 }
@@ -1430,7 +1430,7 @@ $('#critForm').addEventListener('submit', e => {
 $('#critNew').addEventListener('click', () => openCritDialog(null));
 function deleteCrit(id){
   const c = critOf(id); if (c === NONE) return;
-  if (!confirm(`Supprimer la catégorie « ${c.name} » ?\nSes commentaires (banque et rapport ouvert) deviendront « Non classé ».`)) return;
+  if (!confirm(`Supprimer la catégorie « ${c.name} » ?\nSes commentaires (banque et rapport ouvert) iront dans « Autres commentaires ».`)) return;
   criteria = criteria.filter(x => x.id !== id); saveCriteria();
   bank.forEach(it => { if (it.crit === id){ it.crit = 'none'; safe(DB.put(it)); } });
   if (doc){ doc.comments.forEach(cm => { if (cm.crit === id) cm.crit = 'none'; }); delete doc.grades[id]; changed(); }
@@ -1925,7 +1925,7 @@ function buildExport(d){
   const listHtml = !dots ? `<ol>${ord.map(itemHtml).join('\n')}</ol>` : allCrits().map(cr => {
     const cs = ord.filter(c => validCrit(c.crit) === cr.id);
     if (!cs.length) return '';
-    return `<div class="cgroup"><span class="cdot" style="background:${cr.color}"></span><h3>${esc(cr.id === 'none' ? 'Autres commentaires' : cr.name)}</h3></div><ol>${cs.map(itemHtml).join('\n')}</ol>`;
+    return `<div class="cgroup"><span class="cdot" style="background:${cr.color}"></span><h3>${esc(cr.name)}</h3></div><ol>${cs.map(itemHtml).join('\n')}</ol>`;
   }).join('\n');
   const g = d.general, hasG = g.audio || (g.text || '').trim();
   const genHtml = hasG ? `<div class="card"><h2>Commentaire général</h2>${g.audio ? `<audio id="ag" controls preload="metadata" data-n="g" src="${g.audio}"></audio>` : ''}${(g.text || '').trim() ? `<p>${esc(g.text.trim())}</p>` : ''}</div>` : '';
