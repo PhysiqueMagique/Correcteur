@@ -1,4 +1,4 @@
-# Correcteur à critères
+# Correcteur
 
 *Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency.*
 

@@ -6,7 +6,7 @@
 <!-- Verrou de confidentialité : la page n'a le droit de contacter AUCUN serveur (connect-src 'none', form-action 'none').
      Elle ne charge que ses propres fichiers. Les rapports, l'audio et les commentaires restent sur l'appareil. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self'; connect-src 'none'; worker-src 'self' blob:; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>Correcteur à critères</title>
+<title>Correcteur</title>
 <meta name="author" content="Jean-François Désilets et Sovannie Sir, Collège Montmorency">
 <meta name="description" content="Commentaires audio, écrits et dessinés sur les rapports PDF des étudiants. Tout reste sur l'appareil.">
 <meta name="theme-color" content="#c2410c">
@@ -336,7 +336,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
 <header class="topbar" id="topbar">
   <div class="brand"><i>
     <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zm-7 9a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2a5 5 0 0 1-10 0z" fill="currentColor"/></svg>
-  </i><span class="brand-t"><span class="brand-n">Correcteur à critères</span><span class="credit">Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency</span></span></div>
+  </i><span class="brand-t"><span class="brand-n">Correcteur</span><span class="credit">Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency</span></span></div>
   <button id="btnOpen" title="Ouvrir un ou plusieurs rapports PDF (chacun dans son onglet)" aria-label="Ouvrir des PDF">📄<span class="tl"> Ouvrir des PDF</span></button>
   <button id="btnOpenCorr" title="Reprendre là où vous étiez : un .zip « Exporter tout », ou des corrections .html déjà exportées" aria-label="Reprendre">↺<span class="tl"> Reprendre (zip ou .html)</span></button>
   <div class="newc"><span class="newc-l">Commentaire</span>
@@ -346,7 +346,6 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
     <button data-mode="ink" title="Dessin (D)">🖊<span class="tl"> Dessin</span><kbd>D</kbd></button>
     <button data-mode="select" title="Déplacer (V)">✋<span class="tl"> Déplacer</span><kbd>V</kbd></button>
   </div></div>
-  <label class="critpick" title="Catégorie des nouveaux commentaires (touches 1 à 9 ; 0 = Non classé)"><span class="cdot" id="activeDot"></span><select id="activeCrit" aria-label="Catégorie active"></select></label>
   <div class="spacer"></div>
   <span id="docName"></span>
   <button id="btnMic" title="Choisir et tester le micro" aria-label="Réglage du micro">🎙</button>
@@ -971,6 +970,7 @@ document.querySelectorAll('.seg [data-mode]').forEach(b => b.addEventListener('c
 /* ---------- document ---------- */
 function setDoc(d){
   closePop();
+  activeCrit = validCrit(d.lastCrit || 'none');   // nouveau rapport : Non classé ; sinon la catégorie du dernier commentaire
   d.id = d.id || uid(); d.ink = d.ink || []; d.grades = d.grades || {}; d.final = d.final || '';
   if (!undoStacks.has(d.id)) undoStacks.set(d.id, []);
   inkUndo = undoStacks.get(d.id);
@@ -1215,7 +1215,7 @@ async function newAudioComment(page, x, y){
   const res = await record({kind: 'comment', id: c.id}, () => { c._busy = true; renderMarkers(); });
   delete c._busy;
   if (!res){ doc.comments = doc.comments.filter(k => k !== c); selectedId = null; renderMarkers(); return; }
-  c.audio = res.url; c.dur = res.dur; changed(); renderMarkers();
+  c.audio = res.url; c.dur = res.dur; setActiveCrit(c.crit); changed(); renderMarkers();
 }
 function newTextComment(page, x, y){
   const c = {id: uid(), page, x, y, type: 'text', text: '', audio: null, dur: 0, crit: validCrit(activeCrit)};
@@ -1224,7 +1224,7 @@ function newTextComment(page, x, y){
 function placeBankItem(itemId, page, x, y){
   const it = bank.find(b => b.id === itemId); disarm(); if (!it) return;
   const c = {id: uid(), page, x, y, type: it.audio ? 'audio' : 'text', text: it.text || '', audio: it.audio || null, dur: it.dur || 0, crit: validCrit(it.crit)};
-  doc.comments.push(c); selectedId = c.id; changed(); renderMarkers();
+  doc.comments.push(c); selectedId = c.id; setActiveCrit(c.crit); changed(); renderMarkers();
   it.uses = (it.uses || 0) + 1; safe(DB.put(it));
   toast(`« ${it.name} » placé.`);
 }
@@ -1277,7 +1277,7 @@ function openPop(id){
   renderPopColors();
   $('#popColors').addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if (!b) return; if (b.dataset.pc) c.color = b.dataset.pc; else delete c.color; changed(); renderMarkers(); renderPopColors(); });
   $('#popColors').addEventListener('input', e => { if (!e.target.matches('[data-pcc]')) return; c.color = e.target.value; changed(); renderMarkers(); $('#popColors').querySelectorAll('[data-pc]').forEach(b => b.classList.remove('on')); });
-  $('#popCrit').addEventListener('change', e => { const id = pickCrit(e.target, c.crit); if (!id) return; c.crit = id; $('#popDot').style.background = critOf(c.crit).color; changed(); renderMarkers(); });
+  $('#popCrit').addEventListener('change', e => { const id = pickCrit(e.target, c.crit); if (!id) return; c.crit = id; setActiveCrit(id); $('#popDot').style.background = critOf(c.crit).color; changed(); renderMarkers(); });
   const ta = pop.querySelector('textarea');
   ta.addEventListener('input', () => { c.text = ta.value; changed(); });
   if (c.type === 'text') setTimeout(() => ta.focus(), 0);
@@ -1338,8 +1338,8 @@ function renderGeneral(){
 $('#genText').addEventListener('input', e => { if (doc){ doc.general.text = e.target.value; changed(); } });
 
 /* ---------- critères (grille d'évaluation) ---------- */
-const NONE = {id: 'none', name: 'Non classé', color: '#8b9099'};
-const PALETTE = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#4f46e5', '#dc2626', '#0d9488'];
+const NONE = {id: 'none', name: 'Non classé', color: '#16a34a'};   // vert par défaut, modifiable avec ✎
+const PALETTE = ['#2563eb', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#4f46e5', '#dc2626', '#0d9488'];
 const COLORS = ['#c2410c', '#dc2626', '#db2777', '#9333ea', '#4f46e5', '#2563eb', '#0891b2', '#0d9488', '#16a34a', '#ca8a04', '#6b7280'];   // choix proposés (rose et violet inclus)
 const isHex = v => /^#[0-9a-f]{6}$/i.test(v || '');
 let colorMode = 'crit', uniformColor = '#c2410c';
@@ -1372,13 +1372,11 @@ function pickCrit(select, current){
 }
 function setActiveCrit(id){
   activeCrit = validCrit(id);
-  $('#activeCrit').value = activeCrit; $('#activeDot').style.background = critOf(activeCrit).color;
-  safe(DB.set('activeCrit', activeCrit)); updateStatus();
+  if (doc && doc.lastCrit !== activeCrit){ doc.lastCrit = activeCrit; scheduleSave(doc); }   // mémorisé par rapport
+  updateStatus();
 }
-$('#activeCrit').addEventListener('change', e => { const id = pickCrit(e.target, activeCrit); if (id) setActiveCrit(id); e.target.blur(); });
 function renderCritUI(){
   activeCrit = validCrit(activeCrit);
-  $('#activeCrit').innerHTML = critOptions(activeCrit); $('#activeDot').style.background = critOf(activeCrit).color;
   renderEval(); renderBank(); if (doc) renderMarkers(); updateStatus();
 }
 // Fusionne une liste de critères venue d'un fichier ; renvoie {idReçu: idLocal}
@@ -1406,8 +1404,8 @@ function updateEvalCounts(){}
 let critEdit = null;
 function openCritDialog(c){
   critEdit = c ? {...c} : {id: uid(), name: '', color: nextColor(), isNew: true};
-  $('#critTitle').textContent = critEdit.isNew ? 'Nouvelle catégorie' : 'Modifier la catégorie';
-  $('#critName').value = critEdit.name; renderSwatches();
+  $('#critTitle').textContent = critEdit.isNew ? 'Nouvelle catégorie' : critEdit.id === 'none' ? 'Couleur de « Non classé »' : 'Modifier la catégorie';
+  $('#critName').value = critEdit.name; $('#critName').disabled = critEdit.id === 'none'; renderSwatches();
   $('#critDlg').showModal(); setTimeout(() => $('#critName').focus(), 0);
 }
 function renderSwatches(){
@@ -1419,6 +1417,7 @@ function renderSwatches(){
 }
 $('#critForm').addEventListener('submit', e => {
   if (!e.submitter || e.submitter.value !== 'ok') return;
+  if (critEdit.id === 'none'){ NONE.color = critEdit.color; safe(DB.set('noneColor', NONE.color)); renderCritUI(); if (doc) changed(); toast('Couleur modifiée.'); return; }
   const name = $('#critName').value.trim();
   if (!name){ e.preventDefault(); toast('Donnez un nom à la catégorie.'); return; }
   if (criteria.some(c => c.id !== critEdit.id && c.name.trim().toLowerCase() === name.toLowerCase())){ e.preventDefault(); toast('Cette catégorie existe déjà.'); return; }
@@ -1478,7 +1477,7 @@ function renderBank(){
     if (q && !items.length) return '';
     const open = q || !collapsed.has(c.id) || items.some(it => it.id === armed);
     return `<li class="sec" data-crit="${c.id}"><details${open ? ' open' : ''}>
-      <summary>${isNone ? '' : '<span class="grip sec-grip" title="Glisser pour déplacer la catégorie">⠿</span>'}<span class="chev">▸</span><span class="cdot" style="background:${c.color}"></span><span class="sec-name${isNone ? ' none' : ''}">${esc(c.name)}</span><span class="sec-count">${items.length}</span>${isNone ? '' : '<button data-act="editcrit" title="Renommer / changer la couleur de la catégorie">✎</button><button data-act="delcrit" title="Supprimer la catégorie">🗑</button>'}</summary>
+      <summary>${isNone ? '' : '<span class="grip sec-grip" title="Glisser pour déplacer la catégorie">⠿</span>'}<span class="chev">▸</span><span class="cdot" style="background:${c.color}"></span><span class="sec-name${isNone ? ' none' : ''}">${esc(c.name)}</span><span class="sec-count">${items.length}</span>${isNone ? '<button data-act="editcrit" title="Changer la couleur">✎</button>' : '<button data-act="editcrit" title="Renommer / changer la couleur de la catégorie">✎</button><button data-act="delcrit" title="Supprimer la catégorie">🗑</button>'}</summary>
       <ul class="sec-items">${items.length ? items.map(bankItemHtml).join('') : '<li class="sec-empty">Aucun commentaire : glissez-en un ici ou créez-en un.</li>'}</ul></details></li>`;
   }).join('');
 }
@@ -1909,7 +1908,7 @@ function buildExport(d){
     ink: (d.ink || []).map(st => ({p: st.page, c: st.c, w: st.w, o: st.o, pts: st.pts}))};
   const marker = c => {
     const n = num.get(c.id);
-    const cr = critOf(validCrit(c.crit));
+    const cr0 = critOf(validCrit(c.crit)), cr = {name: cr0.id === 'none' ? 'Commentaire' : cr0.name};
     return `<a class="mk ${c.type}" id="m${n}" href="#c${n}" data-n="${n}" style="left:${r4(c.x) * 100}%;top:${r4(c.y) * 100}%;--mk:${colorOf(c)}" title="${esc(cr.name)}" aria-label="Commentaire ${n} (${c.type === 'audio' ? 'audio' : 'écrit'}, ${esc(cr.name)})"><span class="ic">${c.type === 'audio' ? ICON.play + ICON.pause : ICON.note}</span><span class="n">${n}</span></a>`;
   };
   const pagesHtml = d.pages.map((p, i) =>
@@ -1926,7 +1925,7 @@ function buildExport(d){
   const listHtml = !dots ? `<ol>${ord.map(itemHtml).join('\n')}</ol>` : allCrits().map(cr => {
     const cs = ord.filter(c => validCrit(c.crit) === cr.id);
     if (!cs.length) return '';
-    return `<div class="cgroup"><span class="cdot" style="background:${cr.color}"></span><h3>${esc(cr.name)}</h3></div><ol>${cs.map(itemHtml).join('\n')}</ol>`;
+    return `<div class="cgroup"><span class="cdot" style="background:${cr.color}"></span><h3>${esc(cr.id === 'none' ? 'Autres commentaires' : cr.name)}</h3></div><ol>${cs.map(itemHtml).join('\n')}</ol>`;
   }).join('\n');
   const g = d.general, hasG = g.audio || (g.text || '').trim();
   const genHtml = hasG ? `<div class="card"><h2>Commentaire général</h2>${g.audio ? `<audio id="ag" controls preload="metadata" data-n="g" src="${g.audio}"></audio>` : ''}${(g.text || '').trim() ? `<p>${esc(g.text.trim())}</p>` : ''}</div>` : '';
@@ -2114,7 +2113,7 @@ function setupOffline(){
   inkPrefs = Object.assign(inkPrefs, (await safe(DB.get('ink'))) || {}); setInkTool();
   collapsed = new Set((await safe(DB.get('collapsed'))) || []);
   criteria = (await safe(DB.get('criteria'))) || [];
-  activeCrit = (await safe(DB.get('activeCrit'))) || 'none';
+  NONE.color = isHex(await safe(DB.get('noneColor'))) ? await safe(DB.get('noneColor')) : NONE.color;
   const col = (await safe(DB.get('colors'))) || {};
   colorMode = 'crit';
   renderColorMode();

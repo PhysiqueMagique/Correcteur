@@ -1,10 +1,10 @@
-/* Correcteur à critères — fonctionnement hors ligne.
+/* Correcteur — fonctionnement hors ligne.
    Ce fichier ne fait que garder une copie de l'outil sur l'appareil.
    Il ne voit jamais les rapports, l'audio ni les commentaires : ceux-ci ne passent pas par le réseau.
 
    Mise à jour : si vous modifiez seulement index.html, rien à faire (la page est revérifiée à chaque ouverture en ligne).
    Si vous modifiez un autre fichier (lib/, icons/, manifest), changez VERSION ci-dessous. */
-const VERSION = '2026-11-01';
+const VERSION = '2026-11-01b';
 const CACHE = 'correcteur-' + VERSION;
 const FILES = [
   './', 'index.html', 'manifest.webmanifest',
