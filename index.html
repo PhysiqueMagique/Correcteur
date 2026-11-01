@@ -1,0 +1,2140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Verrou de confidentialité : la page n'a le droit de contacter AUCUN serveur (connect-src 'none', form-action 'none').
+     Elle ne charge que ses propres fichiers. Les rapports, l'audio et les commentaires restent sur l'appareil. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self'; connect-src 'none'; worker-src 'self' blob:; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Correcteur à critères</title>
+<meta name="description" content="Commentaires audio, écrits et dessinés sur les rapports PDF des étudiants. Tout reste sur l'appareil.">
+<meta name="theme-color" content="#c2410c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Correcteur">
+<style>
+:root{--bg:#ece8e1;--panel:#fbfaf7;--ink:#1f2328;--muted:#5d6670;--line:#d9d3c7;--accent:#c2410c;--blue:#2563eb;--danger:#b91c1c;--topH:96px}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button{font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:#b3aa9b}
+button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.primary:hover{filter:brightness(1.07)}
+button:disabled{opacity:.45;cursor:default;filter:none}
+button.danger{color:var(--danger)}
+button.ghost{background:transparent;border-color:transparent}
+.muted{color:var(--muted)}
+
+/* barre du haut */
+.topbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:10px 16px 8px;background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{font-weight:700;font-size:15px;margin-right:4px;display:flex;align-items:center;gap:7px}
+.brand i{width:22px;height:22px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:#fff;font-style:normal}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+.seg button{border:0;border-radius:0;padding:6px 12px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.active{background:var(--ink);color:#fff}
+kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;margin-left:5px}
+.spacer{flex:1}
+#docName{display:none}
+.status{flex-basis:100%;font-size:13px;color:var(--muted);min-height:19px}
+.status b{color:var(--ink)}
+.status.armed{color:#7c2d12}
+
+/* mise en page */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;align-items:start}
+#viewer{padding:18px 26px 120px;min-height:calc(100vh - var(--topH))}
+#pages,#general{max-width:1000px;margin:0 auto}
+.plabel{max-width:1000px;margin:18px auto 6px;color:var(--muted);font-size:12px}
+.page{position:relative;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15),0 8px 24px rgba(0,0,0,.08);user-select:none;-webkit-user-select:none}
+.page img{display:block;width:100%;height:auto;pointer-events:none}
+body.m-audio .page,body.m-text .page,body.armed .page{cursor:crosshair}
+body.m-ink .page{touch-action:none;cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cpath d='M3 19l2.5-7L15 2.5l4.5 4.5L10 16.5z' fill='%23fff' stroke='%231f2328' stroke-width='1.4'/%3E%3Cpath d='M3 19l2.5-7 4.5 4.5z' fill='%231f2328'/%3E%3C/svg%3E") 2 20,crosshair}
+body.m-ink.eraser .page{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='11' cy='11' r='8' fill='%23ffffffcc' stroke='%231f2328' stroke-width='1.5'/%3E%3C/svg%3E") 11 11,cell}
+body.m-ink .page .mk{cursor:pointer}
+.inkbar{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.inkbar[hidden]{display:none}
+.inkbar .sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.inkbar .sw{width:28px;height:28px;padding:0;border-radius:50%;display:grid;place-items:center}
+.inkbar .sw i{width:16px;height:16px;border-radius:50%;display:block}
+.inkbar .sw.hl i{border-radius:3px;width:18px;height:10px}
+.inkbar .lab{font-size:13px;color:var(--muted);margin:0 2px 0 4px;white-space:nowrap}
+.inkbar .wd{width:34px;height:28px;padding:0;display:grid;place-items:center}
+.inkbar .wd i{display:block;width:18px;border-radius:9px;background:var(--ink)}
+.inkbar button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset}
+
+/* commentaire général */
+#general{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:6px}
+#general textarea{width:100%;min-height:58px;resize:vertical;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:8px}
+.gen-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+
+/* état vide */
+#empty{max-width:640px;margin:7vh auto 0;text-align:center}
+.drop{border:2px dashed #c9c0b0;border-radius:18px;padding:34px 28px;background:rgba(255,255,255,.45)}
+body.dragover .drop{border-color:var(--accent);background:#fff7ed}
+.drop h1{font-size:20px;margin:0 0 6px}
+.drop .big{font-size:15px;padding:10px 18px;margin:10px 4px 4px}
+.howto{text-align:left;margin:22px auto 0;max-width:470px;color:var(--muted);padding-left:20px}
+.howto li{margin:5px 0}
+.howto b{color:var(--ink)}
+#resume[hidden]{display:none}
+/* onglets */
+.tabs{flex-basis:100%;display:flex;align-items:center;gap:6px;min-width:0;margin-top:2px}
+.tabs[hidden]{display:none}
+.tablist{flex:1;min-width:0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin;padding:2px 1px}
+.tab{display:flex;align-items:center;gap:6px;flex:none;max-width:220px;padding:4px 3px 4px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;user-select:none;-webkit-user-select:none}
+.tab:hover{border-color:#b3aa9b}
+.tab:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tab .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab .st{width:8px;height:8px;border-radius:50%;flex:none;border:1.5px solid #c9c0b0}
+.tab .st.dirty{background:var(--accent);border-color:var(--accent)}
+.tab .st.done{background:#10b981;border-color:#10b981}
+.tab .tx{border:0;background:transparent;color:inherit;opacity:.5;padding:0 5px;font-size:16px;line-height:1}
+.tab .tx:hover{opacity:1}
+.tabs > button{padding:4px 9px}
+.tabcount{font-size:12px;color:var(--muted);white-space:nowrap}
+.sync{display:flex;gap:5px;align-items:center;font-size:13px;color:var(--muted);white-space:nowrap;cursor:pointer}
+#resume{margin:18px auto 0;padding:12px 14px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+
+/* banque */
+#bank{position:sticky;top:var(--topH);height:calc(100vh - var(--topH));overflow:auto;border-left:1px solid var(--line);background:var(--panel);padding:16px 14px 30px}
+#bank h2{font-size:15px;margin:0 0 2px}
+#bank .hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+.bank-actions{display:flex;gap:6px;margin-bottom:8px}
+.bank-actions button{flex:1}
+#bankSearch{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;margin-bottom:8px}
+#bankList{list-style:none;margin:0;padding:0}
+.bk{display:flex;align-items:stretch;border:1px solid var(--line);background:#fff;border-radius:10px;margin-bottom:6px;overflow:hidden}
+.bk.armed{border-color:var(--accent);box-shadow:0 0 0 2px #fdba74}
+.bk-main{flex:1;min-width:0;text-align:left;border:0;border-radius:0;padding:7px 9px;background:transparent;display:grid;grid-template-columns:22px 1fr;gap:0 6px;white-space:normal}
+.bk-ic{grid-row:span 2;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;margin-top:1px}
+.bk-ic.t{border-radius:6px}
+.bk-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-sub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-tools{display:flex;align-items:center;padding-right:4px}
+.bk-tools button{border:0;padding:4px 6px;background:transparent;color:var(--muted)}
+.bk-tools button:hover{color:var(--ink)}
+.bank-empty{font-size:13px;color:var(--muted);padding:10px 2px}
+.sec{margin-bottom:6px}
+.sec details{border-radius:10px}
+.sec summary{list-style:none;display:flex;align-items:center;gap:6px;padding:6px 4px 6px 6px;cursor:pointer;border-radius:8px;font-weight:700;user-select:none}
+.sec summary::-webkit-details-marker{display:none}
+.sec summary:hover{background:#efe9df}
+.sec summary .chev{width:14px;color:var(--muted);transition:transform .15s;display:inline-block}
+.sec details[open] > summary .chev{transform:rotate(90deg)}
+.sec .sec-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sec .sec-name.none{font-weight:600;color:var(--muted);font-style:italic}
+.sec .sec-count{font-weight:600;font-size:12px;color:var(--muted);background:#ece6db;border-radius:9px;padding:0 7px}
+.sec summary button{border:0;background:transparent;padding:1px 5px;color:var(--muted);font-weight:400;opacity:0}
+.sec summary:hover button,.sec summary button:focus-visible{opacity:1}
+.sec-items{list-style:none;margin:2px 0 6px;padding:0 0 0 12px;border-left:2px solid #e4ddd0;margin-left:9px}
+.bank-fold{display:flex;justify-content:flex-end;gap:2px;margin:-2px 0 4px}
+.bank-fold[hidden]{display:none}
+.bank-fold button{border:0;background:transparent;color:var(--muted);font-size:12px;padding:2px 6px}
+.bank-fold button:hover{color:var(--ink)}
+.grip{display:flex;align-items:center;padding:0 1px 0 5px;color:#c4bcae;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;font-size:15px;line-height:1}
+.grip:hover{color:var(--ink)}
+.sec summary .grip{padding:0 2px 0 0;margin-left:-4px}
+#bank.searching .grip{display:none}
+.drop-ph{list-style:none;border:2px dashed var(--accent);border-radius:10px;margin-bottom:6px;background:#fff7ed}
+.drag-ghost{position:fixed;z-index:80;pointer-events:none;list-style:none;margin:0;opacity:.92;box-shadow:0 10px 26px rgba(0,0,0,.25);border-radius:10px;background:#fff}
+body.bank-dragging,body.bank-dragging *{cursor:grabbing!important}
+body.bank-dragging{user-select:none;-webkit-user-select:none}
+.bank-io{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+.bank-io button{flex:1;font-size:12px}
+
+/* popover d'édition */
+#pop{position:fixed;z-index:30;width:330px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.22);padding:12px 12px 10px}
+.pop-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pop-head b{flex:1}
+.pop-head button{padding:2px 8px}
+#pop textarea,#bankDlg textarea{width:100%;min-height:90px;resize:vertical;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px;align-items:center}
+
+/* dialogue banque */
+#bankDlg{border:1px solid var(--line);border-radius:14px;padding:18px;width:min(460px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#bankDlg::backdrop{background:rgba(20,20,20,.35)}
+#bankDlg h3{margin:0 0 12px;font-size:16px}
+#bankDlg label{display:block;font-weight:600;margin:10px 0 4px}
+#bankDlg label span{font-weight:400;color:var(--muted)}
+#bankDlg input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+#bankDlg menu{display:flex;justify-content:flex-end;gap:8px;padding:0;margin:16px 0 0}
+#bankDlg select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+
+/* critères */
+.cdot{display:inline-block;width:12px;height:12px;border-radius:50%;flex:none;box-shadow:0 0 0 1.5px #fff,0 0 0 2.5px rgba(0,0,0,.14)}
+.critpick{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;background:#fff;padding:0 4px 0 10px;height:33px}
+.critpick select{border:0;background:transparent;font:inherit;padding:4px 2px;max-width:150px;outline:none;cursor:pointer}
+.crit-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.crit-head h2{flex:1}
+.crit-head button{padding:4px 10px;font-size:13px;font-weight:600}
+.sec summary .cdot{margin:0 2px}
+.sec-empty{font-size:12px;color:var(--muted);padding:3px 2px 8px;list-style:none}
+.migr{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;font-size:13px;margin:0 0 10px}
+.migr[hidden]{display:none}
+.migr .row{margin-top:8px}
+#evalCard{max-width:1000px;margin:0 auto 10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+#evalCard[hidden]{display:none}
+.eval-grid{display:grid;grid-template-columns:14px minmax(0,1fr) auto 120px;gap:7px 10px;align-items:center;margin-top:10px}
+.eval-grid .ev-n{color:var(--muted);font-size:12px;white-space:nowrap}
+.eval-grid input{width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:7px;font:inherit;background:#fff;text-align:center}
+.eval-grid .final{font-weight:700}
+.eval-grid hr{grid-column:1/-1;border:0;border-top:1px solid var(--line);margin:2px 0;width:100%}
+.cmode{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0 10px;font-size:13px}
+.cmode-row{display:flex;flex-direction:column;align-items:stretch;gap:6px;font-weight:600}
+.cmode-row .seg{display:flex}
+.cmode-row .seg button{flex:1}
+.seg.sm button{padding:4px 9px;font-size:12.5px}
+.cmode-note{color:var(--muted);font-size:12px;margin-top:6px}
+.swatches.sm{gap:6px;margin-top:8px}
+.swatches.sm[hidden]{display:none}
+.swatches.sm button{width:22px;height:22px}
+.swatches.sm input[type=color]{width:30px;height:24px}
+.colrow{gap:5px!important}
+.colrow .lbl{font-size:12.5px;color:var(--muted);margin-right:2px}
+.colrow button.sw{width:20px;height:20px;border-radius:50%;padding:0;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.colrow button.sw.on{box-shadow:0 0 0 2.5px var(--ink)}
+.colrow button.auto{padding:1px 8px;font-size:12px;border-radius:11px}
+.colrow button.auto.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.colrow input[type=color]{width:26px;height:22px;padding:0;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer}
+#pop select{flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+#critDlg{border:1px solid var(--line);border-radius:14px;padding:18px;width:min(420px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#critDlg::backdrop{background:rgba(20,20,20,.35)}
+#critDlg h3{margin:0 0 12px;font-size:16px}
+#critDlg label{display:block;font-weight:600;margin:10px 0 6px}
+#critDlg input#critName{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+#critDlg menu{display:flex;justify-content:flex-end;gap:8px;padding:0;margin:18px 0 0}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.swatches button{width:30px;height:30px;border-radius:50%;padding:0;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.swatches button.on{box-shadow:0 0 0 2.5px var(--ink)}
+.swatches input[type=color]{width:38px;height:32px;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+
+/* réglage du micro */
+#micDlg{border:1px solid var(--line);border-radius:14px;padding:18px;width:min(500px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#micDlg::backdrop{background:rgba(20,20,20,.35)}
+#micDlg h3{margin:0 0 10px;font-size:16px}
+#micDlg label{display:block;font-weight:600;margin:12px 0 5px}
+#micDlg label span{font-weight:400;color:var(--muted)}
+#micDlg label.check{display:flex;gap:8px;align-items:flex-start;font-weight:500;margin-top:16px}
+#micDlg label.check input{margin-top:3px}
+#micDlg select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+#micDlg menu{display:flex;justify-content:flex-end;padding:0;margin:16px 0 0}
+.meter{position:relative;height:18px;border-radius:9px;background:#e9e4da;overflow:hidden}
+.meter-zone{position:absolute;left:66.7%;width:28.3%;top:0;bottom:0;background:#d1fae5}
+.meter-bar{position:absolute;left:0;top:0;bottom:0;width:0;background:#9ca3af;border-radius:9px;transition:width .05s linear}
+.meter-peak{position:absolute;top:0;bottom:0;width:3px;left:0;background:#1f2328}
+.meter-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:3px;padding:0 4px}
+.meter-scale span:nth-child(2){margin-left:40%}
+.meter-msg{margin-top:8px;font-weight:600;min-height:20px}
+.meter-msg.low{color:#b45309}.meter-msg.ok{color:#047857}.meter-msg.hi{color:var(--danger)}
+
+/* enregistrement */
+#recBar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:50;background:#1f2328;color:#fff;border-radius:999px;padding:10px 12px 10px 18px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14px}
+#recBar[hidden]{display:none}
+.dot{width:10px;height:10px;border-radius:50%;background:#ef4444;animation:blink 1s infinite}
+#recBar button{background:#33383f;border-color:#4a5058;color:#fff;padding:5px 10px}
+@keyframes blink{50%{opacity:.25}}
+@keyframes pulse{0%{box-shadow:0 0 0 2px #fff,0 0 0 2px rgba(220,38,38,.6)}100%{box-shadow:0 0 0 2px #fff,0 0 0 14px rgba(220,38,38,0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* éditeur : états des pastilles */
+.page .mk{cursor:grab}
+.page .mk.rec{--mk:#dc2626;animation:pulse 1s infinite}
+.page .mk.busy .ic{opacity:.55}
+.page .mk.busy::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid transparent;border-top-color:var(--accent);animation:spin .8s linear infinite}
+.page .mk.sel{outline:3px solid var(--blue);outline-offset:4px}
+
+#toast{position:fixed;left:50%;top:calc(var(--topH) + 14px);transform:translateX(-50%);z-index:60;background:#1f2328;color:#fff;padding:9px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:13.5px;max-width:min(560px,90vw);opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+#toast.err{background:#991b1b}
+#progress{position:fixed;inset:0;z-index:70;background:rgba(236,232,225,.75);display:grid;place-items:center;font-size:15px;font-weight:600}
+#progress[hidden]{display:none}
+
+
+/* éléments selon l'appareil */
+.touch{display:none}
+@media (hover:none) and (pointer:coarse){ .desk{display:none} .touch{display:inline} kbd{display:none} .sec summary button{opacity:1} }
+#btnBank{display:none}
+.wipe{display:block;width:100%;margin-top:18px;background:transparent;border-color:transparent;color:var(--muted);font-size:12px}
+.wipe:hover{color:var(--danger);border-color:#f3c5c5}
+.about{font-size:11.5px;color:var(--muted);margin:8px 2px 0;line-height:1.4}
+.install{max-width:470px;margin:16px auto 0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px;text-align:left}
+.install[hidden]{display:none}
+.install button{margin-top:8px}
+#updateBar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:65;background:#1f2328;color:#fff;border-radius:12px;padding:8px 8px 8px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14px;max-width:calc(100vw - 24px)}
+#updateBar[hidden]{display:none}
+#saveDlg{border:1px solid var(--line);border-radius:14px;padding:18px;width:min(420px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#saveDlg::backdrop{background:rgba(20,20,20,.35)}
+#saveDlg h3{margin:0 0 6px;font-size:16px}
+.save-name{font-weight:600;overflow-wrap:anywhere;margin:0 0 12px}
+.save-acts{display:flex;flex-direction:column;gap:8px}
+.save-acts button{padding:10px 12px;font-size:15px}
+.save-tip{font-size:12.5px;margin:10px 0 0}
+.page{-webkit-touch-callout:none}
+
+/* tablette et téléphone : la banque devient un panneau qui glisse */
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  #btnBank{display:inline-block}
+  #bank{position:fixed;right:0;top:var(--topH);height:calc(100dvh - var(--topH));width:min(380px,92vw);z-index:25;border-left:1px solid var(--line);
+        transform:translateX(102%);transition:transform .2s ease;box-shadow:-12px 0 30px rgba(0,0,0,.18);padding-bottom:40px}
+  body.bank-open #bank{transform:none}
+  body.bank-open #btnBank{background:var(--ink);color:#fff;border-color:var(--ink)}
+  #viewer{padding:14px 12px 120px}
+}
+/* téléphone */
+@media (max-width:640px){
+  .topbar{gap:6px;padding:8px 8px 6px}
+  .brand{font-size:0;margin:0}
+  .brand i{font-size:13px}
+  .tl{display:none}
+  .topbar > button,.tabs > button{padding:6px 9px}
+  .seg button{padding:6px 10px}
+  .spacer{display:none}
+  .critpick{padding-left:8px}
+  .critpick select{max-width:118px}
+  .status{display:none}
+  .status.armed{display:block;font-size:12.5px;line-height:1.35}
+  .inkbar{gap:4px}
+  .inkbar .sep{margin:0 1px}
+  .tabcount{display:none}
+  .tab{max-width:150px}
+  #viewer{padding:10px 6px 120px}
+  #evalCard,#general{padding:10px 10px}
+  .eval-grid{grid-template-columns:14px minmax(0,1fr) 92px}
+  .eval-grid .ev-n{display:none}
+  .eval-grid hr + span{display:none}
+  #pop{left:8px!important;right:8px;width:auto;top:calc(var(--topH) + 8px)!important;max-height:calc(100dvh - var(--topH) - 16px);overflow:auto}
+  #recBar{left:8px;right:8px;transform:none;bottom:12px;border-radius:14px;font-size:13px;justify-content:space-between}
+  .plabel{margin:12px auto 4px}
+  .drop{padding:22px 16px}
+}
+</style>
+</head>
+<body class="m-audio">
+
+<header class="topbar" id="topbar">
+  <div class="brand"><i>
+    <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zm-7 9a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2a5 5 0 0 1-10 0z" fill="currentColor"/></svg>
+  </i>Correcteur à critères</div>
+  <button id="btnOpen" title="Ouvrir un ou plusieurs rapports PDF (chacun dans son onglet)" aria-label="Ouvrir des PDF">📄<span class="tl"> Ouvrir des PDF</span></button>
+  <button id="btnOpenCorr" title="Reprendre là où vous étiez : un .zip « Exporter tout », ou des corrections .html déjà exportées" aria-label="Reprendre">↺<span class="tl"> Reprendre (zip ou .html)</span></button>
+  <div class="seg" role="group" aria-label="Outil">
+    <button data-mode="audio" class="active" title="Audio (A)">🎤<span class="tl"> Audio</span><kbd>A</kbd></button>
+    <button data-mode="text" title="Texte (T)">✏️<span class="tl"> Texte</span><kbd>T</kbd></button>
+    <button data-mode="ink" title="Dessin (D)">🖊<span class="tl"> Dessin</span><kbd>D</kbd></button>
+    <button data-mode="select" title="Déplacer (V)">✋<span class="tl"> Déplacer</span><kbd>V</kbd></button>
+  </div>
+  <label class="critpick" title="Critère donné aux nouveaux commentaires (touches 1 à 9 ; 0 = Non classé)"><span class="cdot" id="activeDot"></span><select id="activeCrit" aria-label="Critère actif"></select></label>
+  <div class="spacer"></div>
+  <span id="docName"></span>
+  <button id="btnMic" title="Choisir et tester le micro" aria-label="Réglage du micro">🎙</button>
+  <button id="btnBank" title="Critères et banque de commentaires" aria-label="Critères et banque">⭐<span class="tl"> Banque</span></button>
+  <div class="inkbar" id="inkBar" hidden>
+    <button class="sw" data-ink="#dc2626" title="Rouge"><i style="background:#dc2626"></i></button>
+    <button class="sw" data-ink="#2563eb" title="Bleu"><i style="background:#2563eb"></i></button>
+    <button class="sw" data-ink="#16a34a" title="Vert"><i style="background:#16a34a"></i></button>
+    <button class="sw" data-ink="#db2777" title="Rose"><i style="background:#db2777"></i></button>
+    <button class="sw" data-ink="#9333ea" title="Violet"><i style="background:#9333ea"></i></button>
+    <button class="sw" data-ink="#111827" title="Noir"><i style="background:#111827"></i></button>
+    <span class="sep"></span>
+    <span class="lab">🖍<span class="tl"> Surligneur</span><kbd>H</kbd></span>
+    <button class="sw hl" data-hl="#facc15" title="Surligneur jaune"><i style="background:#facc15"></i></button>
+    <button class="sw hl" data-hl="#4ade80" title="Surligneur vert"><i style="background:#4ade80"></i></button>
+    <button class="sw hl" data-hl="#f472b6" title="Surligneur rose"><i style="background:#f472b6"></i></button>
+    <button class="sw hl" data-hl="#60a5fa" title="Surligneur bleu"><i style="background:#60a5fa"></i></button>
+    <span class="sep"></span>
+    <button class="wd" data-w="2" title="Trait fin"><i style="height:2px"></i></button>
+    <button class="wd" data-w="3.5" title="Trait moyen"><i style="height:4px"></i></button>
+    <button class="wd" data-w="6" title="Trait épais"><i style="height:7px"></i></button>
+    <span class="sep"></span>
+    <button data-ink="eraser" title="Gomme : touchez un trait pour l'effacer (E)">🧽<span class="tl"> Gomme</span><kbd>E</kbd></button>
+    <button id="inkUndo" title="Annuler le dernier trait (Ctrl+Z)">↶<span class="tl"> Annuler</span></button>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="tabs" id="tabs" hidden>
+    <button id="tabPrev" title="Rapport précédent (Maj + ←)" aria-label="Rapport précédent">◀</button>
+    <div class="tablist" id="tabList" role="tablist" aria-label="Rapports ouverts"></div>
+    <button id="tabNext" title="Rapport suivant (Maj + →)" aria-label="Rapport suivant">▶</button>
+    <span class="tabcount" id="tabCount"></span>
+    <button id="btnCloseAll" title="Fermer tous les rapports" aria-label="Tout fermer">✖<span class="tl"> Tout fermer</span></button>
+    <button id="btnExport" disabled title="Exporter le rapport affiché : un fichier .html à remettre à l'étudiant" aria-label="Exporter celui-ci">⬇<span class="tl"> Exporter celui-ci</span></button>
+    <button id="btnExportAll" class="primary" title="Un seul fichier .zip : la correction .html de chaque rapport + votre banque. Rechargez ce zip avec « Reprendre » pour continuer plus tard." aria-label="Exporter tout">📦<span class="tl"> Exporter tout</span></button>
+  </div>
+</header>
+
+<div class="layout">
+  <section id="viewer">
+    <div id="empty">
+      <div class="drop">
+        <h1><span class="desk">Glissez les rapports PDF de vos étudiants ici</span><span class="touch">Ouvrez les rapports PDF de vos étudiants</span></h1>
+        <div class="muted desk">ou</div>
+        <button class="primary big" id="btnOpen2">Ouvrir des rapports (PDF)</button>
+        <div class="muted" style="margin-top:6px;font-size:13px">Un ou plusieurs à la fois : chaque rapport s'ouvre dans son onglet.</div>
+        <div id="resume" hidden></div>
+      </div>
+      <div id="installBox" class="install" hidden></div>
+      <ol class="howto">
+        <li><b>🎤 Audio :</b> cliquez à l'endroit voulu dans le rapport, parlez, puis cliquez n'importe où (ou <b>Espace</b>) pour arrêter.</li>
+        <li><b>✏️ Texte :</b> cliquez et tapez votre commentaire.</li>
+        <li><b>🎯 Critères :</b> créez votre grille à droite (nom + couleur). Choisissez le critère actif en haut (touches <b>1</b> à <b>9</b>) : les nouvelles pastilles prennent sa couleur.</li>
+        <li><b>⭐ Banque :</b> enregistrez vos commentaires fréquents à droite, puis cliquez-en un et cliquez dans le rapport pour le placer.</li>
+        <li><b>🗂 Onglets :</b> ouvrez tous les rapports d'un coup et passez de l'un à l'autre (<b>Maj + ← →</b>). Chaque rapport garde sa position : vous le retrouvez là où vous l'aviez laissé.</li>
+        <li><b>Exporter :</b> un fichier .html par étudiant. Il s'ouvre dans n'importe quel navigateur, même sur un téléphone. Votre travail est sauvegardé automatiquement entre-temps.</li>
+        <li><b>📦 Exporter tout :</b> un seul .zip avec toutes les corrections et votre banque. Glissez ce zip dans l'outil (ou <b>Reprendre</b>) pour retrouver votre session, sur cet ordinateur ou un autre.</li>
+      </ol>
+    </div>
+    <div id="evalCard" hidden></div>
+    <div id="general" hidden>
+      <div><b>Commentaire général</b> <span class="muted">— facultatif, affiché en haut du fichier de l'étudiant</span></div>
+      <div class="gen-row" id="genAudio"></div>
+      <textarea id="genText" placeholder="Commentaire général écrit (facultatif)…"></textarea>
+    </div>
+    <div id="pages"></div>
+  </section>
+
+  <aside id="bank">
+    <div class="crit-head"><h2>🎯 Critères et banque</h2><button id="critNew" title="Ajouter un critère à la grille">+ Critère</button></div>
+    <div class="cmode">
+      <div class="cmode-row"><span>🎨 Couleur des pastilles</span>
+        <div class="seg sm" role="group" aria-label="Couleur des pastilles"><button data-cm="crit">Par critère</button><button data-cm="uniform">Une seule</button></div></div>
+      <div class="swatches sm" id="uniformPick" hidden></div>
+      <div class="cmode-note" id="cmodeNote"></div>
+    </div>
+    <p class="hint">Chaque critère regroupe ses commentaires. Cliquez un commentaire, puis cliquez dans le rapport pour le placer. Glissez ⠿ pour réorganiser ou changer de critère.</p>
+    <div id="migr" class="migr" hidden></div>
+    <div class="bank-actions">
+      <button id="bankNewAudio">🎤 Nouveau audio</button>
+      <button id="bankNewText">✏️ Nouveau texte</button>
+    </div>
+    <input id="bankSearch" type="search" placeholder="Rechercher dans la banque…">
+    <div class="bank-fold" id="bankFold" hidden><button id="foldAll">Tout replier</button><button id="unfoldAll">Tout déplier</button></div>
+    <ul id="bankList"></ul>
+    <div class="bank-io">
+      <button id="bankExport" title="Enregistrer vos critères et vos commentaires dans un fichier : copie de sécurité, autre ordinateur ou partage avec un collègue">Sauvegarder la banque</button>
+      <button id="bankImport" title="Charger une banque sauvegardée (fusionne avec l'actuelle)">Importer une banque</button>
+    </div>
+    <button id="btnWipe" class="wipe" title="Pour un ordinateur partagé : efface rapports, banque et réglages de cet appareil">🧹 Effacer les données de cet appareil…</button>
+    <p class="about">Version 2026-11-01 · Les rapports, l'audio et les commentaires restent sur cet appareil : l'outil n'envoie rien en ligne.</p>
+  </aside>
+</div>
+
+<div id="pop" hidden></div>
+
+<div id="recBar" hidden>
+  <span class="dot"></span>
+  <span>Enregistrement <b class="recTime">0:00</b><span class="desk"> — cliquez n'importe où ou <b>Espace</b> pour arrêter</span><span class="touch"> — touchez n'importe où pour arrêter</span></span>
+  <button id="recCancel">Annuler<span class="desk"> (Échap)</span></button>
+</div>
+
+<dialog id="bankDlg">
+  <form method="dialog" id="bankForm">
+    <h3 id="dlgTitle">Commentaire de la banque</h3>
+    <label for="dlgName">Nom <span>— pour vous seulement</span></label>
+    <input id="dlgName" maxlength="80" placeholder="ex. : Incertitudes absentes">
+    <label for="dlgCrit">Critère</label>
+    <select id="dlgCrit"></select>
+    <label>Audio</label>
+    <div class="row" id="dlgAudio"></div>
+    <label for="dlgText">Texte <span>— visible par l'étudiant (facultatif si audio)</span></label>
+    <textarea id="dlgText" placeholder="Texte du commentaire…"></textarea>
+    <menu>
+      <button value="cancel" formnovalidate>Annuler</button>
+      <button value="ok" class="primary" id="dlgOk">Enregistrer dans la banque</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="critDlg">
+  <form method="dialog" id="critForm">
+    <h3 id="critTitle">Nouveau critère</h3>
+    <label for="critName">Nom du critère</label>
+    <input id="critName" maxlength="60" placeholder="ex. : Analyse des données" autocomplete="off">
+    <label>Couleur</label>
+    <div class="swatches" id="critSwatches"></div>
+    <menu><button value="cancel" formnovalidate>Annuler</button><button value="ok" class="primary">Enregistrer</button></menu>
+  </form>
+</dialog>
+
+<dialog id="micDlg">
+  <form method="dialog">
+    <h3>🎙 Réglage du micro</h3>
+    <label for="micSelect">Micro</label>
+    <select id="micSelect"></select>
+    <div id="micUsed" class="muted" style="margin-top:6px;font-size:12.5px"></div>
+    <label>Niveau <span>— parlez normalement, à votre distance habituelle</span></label>
+    <div class="meter"><div class="meter-zone"></div><div class="meter-bar" id="meterBar"></div><div class="meter-peak" id="meterPeak"></div></div>
+    <div class="meter-scale"><span>trop faible</span><span>bon niveau</span><span>trop fort</span></div>
+    <div id="meterMsg" class="meter-msg">Parlez pour voir le niveau…</div>
+    <label class="check"><input type="checkbox" id="micProc"> Réduction de bruit de Chrome <span>— à n'activer que si la pièce est bruyante (peut couper des mots)</span></label>
+    <div class="row"><button type="button" id="micTest">🎤 Tester : enregistrer 5 secondes</button><span id="micTestMsg" class="muted"></span></div>
+    <menu><button value="close" class="primary">Fermer</button></menu>
+  </form>
+</dialog>
+
+<div id="updateBar" hidden>Nouvelle version de l'outil disponible. <button id="btnUpdate" class="primary">Mettre à jour</button></div>
+
+<dialog id="saveDlg">
+  <form method="dialog">
+    <h3>Fichier prêt</h3>
+    <p class="save-name" id="saveName"></p>
+    <div class="save-acts">
+      <button value="share" id="saveShare" class="primary">📤 Partager ou enregistrer…</button>
+      <button value="download" id="saveDown">⬇ Télécharger</button>
+      <button value="cancel">Annuler</button>
+    </div>
+    <p class="muted save-tip" id="saveTip"></p>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+<div id="progress" hidden></div>
+<input type="file" id="filePdf" accept="application/pdf,.pdf" multiple hidden>
+<input type="file" id="fileCorr" accept=".zip,application/zip,.html,.htm,text/html,.json,application/json" multiple hidden>
+<input type="file" id="fileBank" accept=".json,application/json" hidden>
+
+<script src="lib/pdf.min.js"></script>
+<script src="lib/lame.min.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script>
+/* ===================================================================
+   Styles des pastilles : partagés par l'éditeur et le fichier étudiant
+   =================================================================== */
+const MARKER_CSS = `
+.mk{--mk:#c2410c;position:absolute;width:36px;height:36px;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;cursor:pointer;color:#fff;text-decoration:none;box-shadow:0 0 0 2px #fff,0 3px 8px rgba(0,0,0,.35);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;z-index:2;background:conic-gradient(color-mix(in srgb,var(--mk) 40%,#fff) calc(var(--p,0)*1%),var(--mk) 0)}
+.mk .ic{width:27px;height:27px;border-radius:50%;background:var(--mk);display:grid;place-items:center;pointer-events:none}
+.mk svg{display:block}
+.mk .pa{display:none}.mk.playing .pl{display:none}.mk.playing .pa{display:block}
+.mk.text{--mk:#8b9099;color:#fff;border-radius:9px;background:var(--mk)}
+.mk.text .ic{border-radius:7px}
+.mk .n{position:absolute;top:-8px;right:-11px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#1f2328;color:#fff;font:700 11px/18px system-ui,-apple-system,sans-serif;text-align:center;box-shadow:0 0 0 1.5px #fff;pointer-events:none}
+.mk:hover{filter:brightness(1.08)}
+.mk:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
+.ink{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+`;
+const ICON = {
+  play:'<svg class="pl" viewBox="0 0 24 24" width="15" height="15"><path d="M8 5.2v13.6L19 12z" fill="currentColor"/></svg>',
+  pause:'<svg class="pa" viewBox="0 0 24 24" width="15" height="15"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>',
+  note:'<svg viewBox="0 0 24 24" width="16" height="16"><path d="M5 6.5h14M5 11.5h14M5 16.5h9" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>'
+};
+document.head.insertAdjacentHTML('beforeend', '<style>' + MARKER_CSS + '</style>');
+
+/* ===================================================================
+   Lecteur du fichier remis à l'étudiant (copié tel quel dans l'export)
+   =================================================================== */
+function studentViewer(){
+  var meta = JSON.parse(document.getElementById('correction-data').textContent);
+  var texts = {}, durs = {};
+  meta.comments.forEach(function(c){ texts[c.n] = c.text || ''; durs[c.n] = c.dur || 0; });
+  var audios = {};
+  document.querySelectorAll('audio[data-n]').forEach(function(a){ audios[a.getAttribute('data-n')] = a; });
+  var current = null, raf = 0;
+  function mk(n){ return document.getElementById('m' + n); }
+  function tick(){
+    if (current === null) return;
+    var a = audios[current], m = mk(current);
+    var d = (a.duration && isFinite(a.duration)) ? a.duration : (durs[current] || 1);
+    if (m) m.style.setProperty('--p', Math.min(100, a.currentTime / d * 100));
+    raf = requestAnimationFrame(tick);
+  }
+  Object.keys(audios).forEach(function(n){
+    var a = audios[n];
+    a.addEventListener('play', function(){
+      Object.keys(audios).forEach(function(k){ if (k !== n) audios[k].pause(); });
+      current = n; var m = mk(n); if (m) m.classList.add('playing');
+      cancelAnimationFrame(raf); tick();
+    });
+    a.addEventListener('pause', function(){ var m = mk(n); if (m) m.classList.remove('playing'); if (current === n) current = null; });
+    a.addEventListener('ended', function(){ var m = mk(n); if (m) m.style.setProperty('--p', 0); });
+  });
+
+  var pop = document.createElement('div'); pop.className = 'pop'; pop.hidden = true; var popFor = null;
+  function closePop(){ pop.hidden = true; popFor = null; }
+  function showPop(m, n){
+    var page = m.parentElement; pop.textContent = texts[n]; page.appendChild(pop); pop.hidden = false; popFor = n;
+    var W = page.clientWidth, H = page.clientHeight, cx = m.offsetLeft, cy = m.offsetTop;
+    var w = pop.offsetWidth, h = pop.offsetHeight;
+    pop.style.left = Math.max(6, Math.min(W - w - 6, cx - w / 2)) + 'px';
+    pop.style.top = (cy + 26 + h < H || cy < H * 0.5 ? cy + 26 : cy - 26 - h) + 'px';
+  }
+  document.addEventListener('click', function(e){
+    var m = e.target.closest('.mk');
+    if (m){
+      e.preventDefault();
+      var n = m.getAttribute('data-n'), a = audios[n];
+      if (a){ if (a.paused){ if (a.ended) a.currentTime = 0; a.play(); } else a.pause(); }
+      if (texts[n]){ if (popFor === n && !a) closePop(); else showPop(m, n); } else closePop();
+      return;
+    }
+    if (!e.target.closest('.pop')) closePop();
+  });
+  function flash(){
+    var h = location.hash;
+    if (/^#m\d+$/.test(h)){ var m = document.querySelector(h); if (m){ m.classList.remove('flash'); void m.offsetWidth; m.classList.add('flash'); } }
+  }
+  window.addEventListener('hashchange', flash);
+}
+
+const VIEW_CSS = `
+:root{--bg:#ece8e1;--card:#fff;--ink:#1f2328;--muted:#5d6670;--line:#d9d3c7;--accent:#c2410c}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1d21;--card:#25282d;--ink:#e8e6e3;--muted:#a3a9b0;--line:#3a3e44}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:40px}
+.wrap{max-width:900px;margin:0 auto;padding:0 12px}
+header{padding:22px 0 6px}
+h1{font-size:1.3rem;margin:0 0 4px;overflow-wrap:anywhere}
+.how{color:var(--muted);margin:0 0 14px;font-size:.93rem}
+.how .k{display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--accent);vertical-align:-3px}
+.how .k.t{background:#f2c037;border-radius:4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 16px}
+.card h2,.list h2{font-size:1.02rem;margin:0 0 6px}
+.card p,.ci p{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+audio{width:100%;margin-top:6px;height:40px}
+.page{position:relative;background:#fff;margin:0 0 18px;box-shadow:0 1px 3px rgba(0,0,0,.15),0 6px 20px rgba(0,0,0,.08);border-radius:3px}
+.page img{display:block;width:100%;height:auto;border-radius:3px}
+.pop{position:absolute;z-index:5;background:#fffbe6;color:#222;border:1px solid #e3cf74;border-radius:10px;padding:9px 12px;box-shadow:0 8px 24px rgba(0,0,0,.22);width:max-content;max-width:min(320px,88%);font-size:15px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.list{padding-top:6px}
+.list ol{list-style:none;padding:0;margin:0}
+.ci{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;scroll-margin-top:12px}
+.ci-head{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--muted)}
+.ci-n{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:#1f2328;color:#fff;font-weight:700;font-size:12px;text-decoration:none}
+.ci{border-left:5px solid var(--c,var(--line))}
+.ci .ci-n{background:var(--c,#1f2328)}
+.cdot{display:inline-block;width:12px;height:12px;border-radius:50%;flex:none}
+.grades{width:100%;border-collapse:collapse;margin-top:2px}
+.grades td{padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
+.grades td.cn .cdot{margin-right:9px;vertical-align:-1px}
+.grades td.g{text-align:right;font-weight:700;white-space:nowrap;padding-left:12px}
+.grades tr.final td{border-bottom:0;font-weight:800;font-size:1.05rem;padding-top:10px}
+.cgroup{display:flex;align-items:center;gap:9px;margin:20px 0 8px}
+.cgroup h3{margin:0;font-size:1.02rem;flex:1;overflow-wrap:anywhere}
+.cgroup .gr{font-weight:700;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:2px 10px;white-space:nowrap}
+.nocomm{color:var(--muted);font-size:.92rem;margin:0 0 8px}
+.ci-head a.back{margin-left:auto;color:var(--muted)}
+.mk{scroll-margin-top:40vh}
+.mk.flash{animation:flash .7s 3}
+@keyframes flash{50%{box-shadow:0 0 0 2px #fff,0 0 0 12px rgba(37,99,235,.55)}}
+@media (max-width:560px){.mk{width:31px;height:31px}.mk .ic{width:23px;height:23px}}
+`;
+
+/* ===================================================================
+   Éditeur
+   =================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const pagesEl = $('#pages'), statusEl = $('#status'), pop = $('#pop'), recBar = $('#recBar');
+const TARGET_W = 1400;          // largeur des pages converties (px)
+const MAX_REC = 300;            // durée max d'un enregistrement (s)
+
+let doc = null;                 // {name, pages:[{src,w,h}], comments:[{id,page,x,y,type,text,audio,dur}], general:{text,audio,dur}}
+let mode = 'audio', armed = null, selectedId = null;
+let docs = [], busyAudio = 0;   // rapports ouverts (onglets)
+const undoStacks = new Map();
+let bank = [];
+let rec = null;                 // enregistrement en cours
+const player = new Audio(); let playingKey = null;
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = s => { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const byId = id => doc && doc.comments.find(c => c.id === id);
+
+function toast(msg, kind){
+  const t = $('#toast'); t.textContent = msg; t.className = 'show' + (kind ? ' ' + kind : '');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.className = '', kind === 'err' ? 6000 : 2600);
+}
+function progress(msg){ const p = $('#progress'); if (msg){ p.textContent = msg; p.hidden = false; } else p.hidden = true; }
+
+new ResizeObserver(() => document.documentElement.style.setProperty('--topH', $('#topbar').offsetHeight + 'px')).observe($('#topbar'));
+
+/* ---------- stockage (banque + correction en cours) ---------- */
+const DB = (() => {
+  let dbp = null;
+  function open(){
+    if (!dbp) dbp = new Promise((res, rej) => {
+      const r = indexedDB.open('correcteur-criteres', 1);
+      r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('bank', {keyPath: 'id'}); d.createObjectStore('kv'); };
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    return dbp;
+  }
+  async function tx(store, m, fn){
+    const d = await open();
+    return new Promise((res, rej) => {
+      const t = d.transaction(store, m); const req = fn(t.objectStore(store));
+      t.oncomplete = () => res(req && 'result' in req ? req.result : undefined);
+      t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  }
+  return {
+    all: () => tx('bank', 'readonly', s => s.getAll()),
+    put: it => tx('bank', 'readwrite', s => s.put(it)),
+    del: id => tx('bank', 'readwrite', s => s.delete(id)),
+    get: k => tx('kv', 'readonly', s => s.get(k)),
+    set: (k, v) => tx('kv', 'readwrite', s => s.put(v, k)),
+    delk: k => tx('kv', 'readwrite', s => s.delete(k)),
+    destroy: async () => {
+      if (dbp){ try { (await dbp).close(); } catch {} dbp = null; }
+      await new Promise(res => { const r = indexedDB.deleteDatabase('correcteur-criteres'); r.onsuccess = r.onerror = r.onblocked = () => res(); });
+    },
+  };
+})();
+let dbOk = true;
+let wiping = false;
+async function safe(p){ if (wiping) return; try { return await p; } catch (e){ console.warn(e); if (dbOk){ dbOk = false; toast("Ce navigateur ne permet pas la sauvegarde automatique. Utilisez « Sauvegarder la banque ».", 'err'); } } }
+
+// Chaque rapport est sauvegardé à part (clé « doc:<id> ») ; la liste des onglets dans « tabs ».
+const saveTimers = new Map();
+function saveDocNow(d){ clearTimeout(saveTimers.get(d.id)); saveTimers.delete(d.id); return safe(DB.set('doc:' + d.id, stripDoc(d))); }
+function scheduleSave(d){ clearTimeout(saveTimers.get(d.id)); saveTimers.set(d.id, setTimeout(() => saveDocNow(d), 700)); }
+function flushSaves(){ docs.forEach(d => { if (saveTimers.has(d.id)) saveDocNow(d); }); }
+function saveTabs(){ safe(DB.set('tabs', {ids: docs.map(d => d.id), cur: doc ? doc.id : null})); }
+function changed(){
+  if (!doc) return;
+  const was = doc.dirty; doc.dirty = true; scheduleSave(doc);
+  if (!was) renderTabs();
+}
+function stripDoc(d){ return {...d, comments: d.comments.map(({_busy, ...c}) => c)}; }
+
+/* ---------- micro et enregistrement ---------- */
+let mic = null, micIdle = 0;
+// Par défaut : son brut du micro (le « nettoyage » de Chrome coupe des mots et fait monter le souffle).
+let micSettings = {deviceId: '', browserProcessing: false};
+function micConstraints(){
+  const p = !!micSettings.browserProcessing;
+  const c = {echoCancellation: p, noiseSuppression: p, autoGainControl: p, channelCount: 1};
+  if (micSettings.deviceId) c.deviceId = {exact: micSettings.deviceId};
+  return {audio: c};
+}
+async function getMic(){
+  clearTimeout(micIdle);
+  if (mic && mic.getAudioTracks().some(t => t.readyState === 'live')) return mic;
+  try { mic = await navigator.mediaDevices.getUserMedia(micConstraints()); }
+  catch (e){
+    if (e && e.name === 'OverconstrainedError' && micSettings.deviceId){ micSettings.deviceId = ''; mic = await navigator.mediaDevices.getUserMedia(micConstraints()); }
+    else throw e;
+  }
+  return mic;
+}
+function resetMic(){ if (mic){ mic.getTracks().forEach(t => t.stop()); mic = null; } }
+function releaseMicLater(){ clearTimeout(micIdle); micIdle = setTimeout(() => { if (!rec && mic){ mic.getTracks().forEach(t => t.stop()); mic = null; } }, 180000); }
+function pickMime(){
+  if (!window.MediaRecorder) return null;
+  return ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4', 'audio/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
+
+/* Démarre un enregistrement. Renvoie une promesse : {url, dur} ou null (annulé/erreur). */
+async function record(target, onProcessing){
+  if (rec) return null;
+  stopPlayback();
+  const mime = pickMime();
+  if (mime === null){ toast("Ce navigateur ne permet pas l'enregistrement. Utilisez Chrome, Edge ou Firefox.", 'err'); return null; }
+  let stream;
+  try { stream = await getMic(); }
+  catch (e){ toast("Micro inaccessible : autorisez le micro pour cette page (icône à gauche de la barre d'adresse).", 'err'); return null; }
+  const mr = new MediaRecorder(stream, mime ? {mimeType: mime} : undefined);
+  const chunks = [];
+  mr.ondataavailable = ev => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+  return new Promise(resolve => {
+    rec = {mr, target, t0: performance.now(), cancelled: false};
+    const timer = setInterval(() => {
+      const s = (performance.now() - rec.t0) / 1000;
+      document.querySelectorAll('.recTime').forEach(e => e.textContent = fmt(s));
+      if (s >= MAX_REC) stopRecording(false);
+    }, 250);
+    mr.onstop = async () => {
+      const r = rec; rec = null; clearInterval(timer);
+      recBar.hidden = true; document.body.classList.remove('recording'); releaseMicLater();
+      const secs = (performance.now() - r.t0) / 1000;
+      if (r.cancelled){ resolve(null); return; }
+      if (secs < 0.6){ toast('Enregistrement trop court : annulé.'); resolve(null); return; }
+      onProcessing && onProcessing();
+      busyAudio++;
+      try { resolve(await processAudio(new Blob(chunks, {type: mr.mimeType || mime || 'audio/webm'}))); }
+      catch (e){ console.error(e); toast("Échec du traitement de l'audio.", 'err'); resolve(null); }
+      finally { busyAudio--; }
+    };
+    mr.start(200);
+    document.querySelectorAll('.recTime').forEach(e => e.textContent = '0:00');
+    if (!$('#bankDlg').open && !$('#micDlg').open) recBar.hidden = false;
+    document.body.classList.add('recording');
+    onRecStart();
+  });
+}
+let onRecStart = () => {};
+let swallowClicksUntil = 0;
+function stopRecording(cancel){
+  if (!rec) return;
+  rec.cancelled = !!cancel;
+  if (rec.mr.state !== 'inactive') rec.mr.stop();
+}
+// Pendant un enregistrement, tout clic l'arrête (sans déclencher autre chose).
+window.addEventListener('pointerdown', e => {
+  if (!rec) return;
+  e.preventDefault(); e.stopPropagation();
+  swallowClicksUntil = performance.now() + 600;
+  stopRecording(!!e.target.closest('#recCancel'));
+}, true);
+window.addEventListener('click', e => {
+  if (performance.now() < swallowClicksUntil){ e.preventDefault(); e.stopPropagation(); swallowClicksUntil = 0; }
+}, true);
+
+/* Nettoyage : coupe les clics de souris, retire les silences au début/à la fin,
+   monte le volume, puis encode en MP3 mono 24 kHz (lisible partout). */
+async function processAudio(blob){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = new AC();
+  let decoded;
+  try { decoded = await ac.decodeAudioData(await blob.arrayBuffer()); } finally { ac.close && ac.close(); }
+  const SR = 24000;
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * SR)), SR);
+  const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start();
+  let x = (await off.startRendering()).getChannelData(0);
+
+  const head = Math.round(0.09 * SR), tail = Math.round(0.16 * SR);
+  if (x.length > head + tail + SR * 0.3) x = x.subarray(head, x.length - tail);
+
+  const fl = Math.round(0.02 * SR), nf = Math.floor(x.length / fl), rms = new Float32Array(nf);
+  let mx = 0;
+  for (let f = 0; f < nf; f++){ let s = 0; for (let i = f * fl; i < (f + 1) * fl; i++) s += x[i] * x[i]; rms[f] = Math.sqrt(s / fl); if (rms[f] > mx) mx = rms[f]; }
+  let y;
+  if (mx > 1e-4){
+    const th = mx * 0.08; let a = 0, b = nf - 1;
+    while (a < nf && rms[a] < th) a++;
+    while (b > a && rms[b] < th) b--;
+    const s0 = Math.max(0, a * fl - Math.round(0.3 * SR)), s1 = Math.min(x.length, (b + 1) * fl + Math.round(0.45 * SR));
+    y = Float32Array.from(x.subarray(s0, s1));
+    let pk = 0, sp = 0, ns = 0;
+    for (let i = 0; i < y.length; i++){ const v = Math.abs(y[i]); if (v > pk) pk = v; }
+    for (let f = a; f <= b; f++) if (rms[f] >= th){ sp += rms[f] * rms[f]; ns++; }
+    const speech = Math.sqrt(sp / Math.max(1, ns));
+    // Gain plafonné à 8 : au-delà, on amplifie surtout le souffle. Un micro bien réglé n'a besoin que de x1 à x3.
+    const g = Math.min(0.13 / Math.max(speech, 1e-5), 1.8 * 0.89 / pk, 8);
+    for (let i = 0; i < y.length; i++){
+      let v = y[i] * g; const av = Math.abs(v);
+      if (av > 0.75) v = Math.sign(v) * (0.75 + 0.24 * Math.tanh((av - 0.75) / 0.24));
+      y[i] = v;
+    }
+  } else y = Float32Array.from(x);
+  const fd = Math.min(Math.round(0.012 * SR), y.length >> 1);
+  for (let i = 0; i < fd; i++){ const k = i / fd; y[i] *= k; y[y.length - 1 - i] *= k; }
+
+  const pcm = new Int16Array(y.length);
+  for (let i = 0; i < y.length; i++) pcm[i] = clamp(y[i], -1, 1) * 32767;
+  let out;
+  try {
+    if (!window.lamejs) throw new Error('lamejs absent');
+    const enc = new lamejs.Mp3Encoder(1, SR, 48), parts = [];
+    for (let i = 0; i < pcm.length; i += 1152){ const b = enc.encodeBuffer(pcm.subarray(i, i + 1152)); if (b.length) parts.push(new Uint8Array(b)); }
+    const e = enc.flush(); if (e.length) parts.push(new Uint8Array(e));
+    out = new Blob(parts, {type: 'audio/mpeg'});
+  } catch (err){ console.warn(err); out = wavBlob(pcm, SR); }
+  return {url: await blobToDataURL(out), dur: y.length / SR};
+}
+function wavBlob(pcm, sr){
+  const b = new ArrayBuffer(44 + pcm.length * 2), v = new DataView(b), w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + pcm.length * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, pcm.length * 2, true);
+  new Int16Array(b, 44).set(pcm); return new Blob([b], {type: 'audio/wav'});
+}
+const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
+
+/* ---------- réglage et test du micro ---------- */
+let meterRaf = 0, meterCtx = null;
+function saveMicSettings(){ safe(DB.set('mic', micSettings)); }
+async function fillDevices(){
+  const sel = $('#micSelect');
+  const track = mic && mic.getAudioTracks()[0];
+  const curLabel = track ? track.label : '';
+  const cur = track && track.getSettings ? (track.getSettings().deviceId || '') : '';
+  let devs = [];
+  try { devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput' && d.deviceId); } catch {}
+  if (cur && !devs.some(d => d.deviceId === cur)) devs.unshift({deviceId: cur, label: curLabel});
+  if (!devs.length) devs = [{deviceId: '', label: curLabel || 'Micro par défaut de Windows'}];
+  sel.innerHTML = devs.map(d => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Micro sans nom')}</option>`).join('');
+  sel.value = devs.some(d => d.deviceId === micSettings.deviceId) ? micSettings.deviceId : cur;
+  if (sel.selectedIndex < 0) sel.selectedIndex = 0;
+  $('#micUsed').innerHTML = curLabel ? 'Micro réellement utilisé : <b>' + esc(curLabel) + '</b>' : '';
+}
+function stopMeter(){ cancelAnimationFrame(meterRaf); if (meterCtx){ meterCtx.close(); meterCtx = null; } }
+async function startMeter(){
+  stopMeter();
+  const msg = $('#meterMsg'); msg.className = 'meter-msg'; msg.textContent = 'Parlez pour voir le niveau…';
+  let stream;
+  try { stream = await getMic(); }
+  catch (e){ msg.className = 'meter-msg hi'; msg.textContent = "Micro inaccessible : autorisez le micro pour cette page."; return; }
+  await fillDevices();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  meterCtx = new AC();
+  const an = meterCtx.createAnalyser(); an.fftSize = 2048;
+  meterCtx.createMediaStreamSource(stream).connect(an);
+  const buf = new Float32Array(an.fftSize), bar = $('#meterBar'), pk = $('#meterPeak');
+  let hold = -90, holdT = 0;
+  const pct = db => clamp((db + 60) / 60, 0, 1) * 100;
+  const loop = () => {
+    an.getFloatTimeDomainData(buf);
+    let p = 0; for (let i = 0; i < buf.length; i++){ const v = Math.abs(buf[i]); if (v > p) p = v; }
+    const db = p > 0 ? 20 * Math.log10(p) : -90, now = performance.now();
+    if (db > hold || now - holdT > 1500){ hold = db; holdT = now; }
+    bar.style.width = pct(db) + '%';
+    bar.style.background = db > -3 ? '#dc2626' : db > -20 ? '#10b981' : db > -30 ? '#f59e0b' : '#9ca3af';
+    pk.style.left = 'calc(' + pct(hold) + '% - 2px)';
+    if (hold > -50){
+      const [cls, txt] = hold > -3 ? ['hi', 'Trop fort : baissez le gain du micro (le son va saturer).']
+        : hold > -20 ? ['ok', '✔ Bon niveau.']
+        : hold > -30 ? ['low', 'Un peu faible : montez un peu le gain du micro.']
+        : ['low', 'Trop faible : montez le gain du micro ou rapprochez-vous.'];
+      msg.className = 'meter-msg ' + cls; msg.textContent = txt;
+    }
+    meterRaf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+$('#btnMic').addEventListener('click', () => {
+  if (rec) return;
+  $('#micProc').checked = !!micSettings.browserProcessing; $('#micTestMsg').textContent = '';
+  $('#micDlg').showModal(); startMeter();
+});
+$('#micSelect').addEventListener('change', e => { micSettings.deviceId = e.target.value; saveMicSettings(); resetMic(); startMeter(); });
+$('#micProc').addEventListener('change', e => { micSettings.browserProcessing = e.target.checked; saveMicSettings(); resetMic(); startMeter(); });
+$('#micTest').addEventListener('click', async () => {
+  const m = $('#micTestMsg');
+  onRecStart = () => { m.textContent = '● Parlez… (5 s)'; };
+  const t = setTimeout(() => stopRecording(false), 5000);
+  const res = await record({kind: 'test'}, () => { m.textContent = 'Traitement…'; });
+  clearTimeout(t);
+  if (!res){ m.textContent = ''; return; }
+  m.textContent = '▶ Lecture de votre test…';
+  play('test', res.url, null);
+  player.addEventListener('ended', () => { if ($('#micDlg').open) m.textContent = 'Vous pouvez refaire le test après chaque réglage.'; }, {once: true});
+});
+$('#micDlg').addEventListener('close', () => { stopRecording(true); stopMeter(); stopPlayback(); releaseMicLater(); });
+
+/* ---------- lecture dans l'éditeur ---------- */
+function play(key, url, btn){
+  if (playingKey === key && !player.paused){ stopPlayback(); return; }
+  stopPlayback(); player.src = url; player.play(); playingKey = key;
+  if (btn){ btn.dataset.label = btn.textContent; btn.textContent = '⏸ Arrêter'; player._btn = btn; }
+}
+function stopPlayback(){
+  player.pause(); playingKey = null;
+  if (player._btn){ player._btn.textContent = player._btn.dataset.label; player._btn = null; }
+}
+player.addEventListener('ended', stopPlayback);
+
+/* ---------- modes ---------- */
+function setMode(m){
+  mode = m; disarm(false);
+  document.querySelectorAll('.seg [data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+  document.body.classList.remove('m-audio', 'm-text', 'm-select', 'm-ink'); document.body.classList.add('m-' + m);
+  $('#inkBar').hidden = m !== 'ink'; closePop();
+  updateStatus();
+  if (doc && matchMedia('(max-width:640px)').matches) toast(statusEl.textContent);   // téléphone : la consigne s'affiche brièvement
+}
+const isTouch = () => matchMedia('(hover:none) and (pointer:coarse)').matches;
+function updateStatus(){
+  statusEl.classList.toggle('armed', !!armed);
+  if (!doc){ statusEl.innerHTML = 'Ouvrez le rapport PDF d\'un étudiant pour commencer.'; return; }
+  if (armed){ const it = bank.find(b => b.id === armed); statusEl.innerHTML = `⭐ ${isTouch() ? 'Touchez' : 'Cliquez dans'} le rapport pour placer <b>« ${esc(it ? it.name : '')} »</b>${isTouch() ? '' : ' · Échap pour annuler'}`; return; }
+  const cr = critOf(validCrit(activeCrit));
+  const critNote = (mode === 'audio' || mode === 'text') ? ` <span class="cdot" style="background:${cr.color};vertical-align:-1px;margin-left:6px"></span> Critère : <b>${esc(cr.name)}</b>` : '';
+  statusEl.innerHTML = (isTouch() ? {
+    audio: '🎤 Touchez l\'endroit voulu, <b>parlez</b>, puis touchez n\'importe où pour arrêter.',
+    text: '✏️ Touchez l\'endroit voulu pour écrire un commentaire.',
+    ink: penSeen ? '🖊 Écrivez avec le stylet · faites défiler avec le doigt.' : '🖊 Dessinez avec un doigt · faites défiler avec <b>deux doigts</b>.',
+    select: '✋ Glissez une pastille pour la déplacer · touchez-la pour la modifier.'
+  } : {
+    audio: '🎤 Cliquez à l\'endroit voulu, <b>parlez</b>, puis cliquez n\'importe où (ou <b>Espace</b>) pour arrêter. Glissez une pastille pour la déplacer.',
+    text: '✏️ Cliquez à l\'endroit voulu pour ajouter un commentaire écrit.',
+    ink: '🖊 Écrivez ou dessinez avec la souris ou un stylet. <b>H</b> : surligneur · la <b>gomme</b> efface un trait en le touchant · <b>Maj</b> enfoncée : trait droit · <b>Ctrl+Z</b> annule. Avec un stylet, faites défiler avec le doigt.',
+    select: '✋ Glissez les pastilles pour les déplacer · cliquez dessus pour les modifier · <b>Suppr</b> pour effacer la pastille sélectionnée.'
+  })[mode] + critNote;
+}
+document.querySelectorAll('.seg [data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+/* ---------- document ---------- */
+function setDoc(d){
+  closePop();
+  d.id = d.id || uid(); d.ink = d.ink || []; d.grades = d.grades || {}; d.final = d.final || '';
+  if (!undoStacks.has(d.id)) undoStacks.set(d.id, []);
+  inkUndo = undoStacks.get(d.id);
+  doc = d; selectedId = null;
+  $('#empty').hidden = true; $('#general').hidden = false;
+  $('#docName').textContent = d.name; $('#docName').title = d.name;
+  $('#btnExport').disabled = false;
+  $('#genText').value = d.general.text || '';
+  renderDoc(); renderEval(); updateStatus(); renderTabs();
+}
+function renderDoc(){
+  pagesEl.innerHTML = '';
+  doc.pages.forEach((p, i) => {
+    const lab = document.createElement('div'); lab.className = 'plabel'; lab.textContent = `Page ${i + 1} / ${doc.pages.length}`;
+    const div = document.createElement('div'); div.className = 'page'; div.dataset.page = i; div.style.aspectRatio = p.w + ' / ' + p.h;
+    const img = new Image(); img.src = p.src; img.alt = ''; img.draggable = false; div.append(img);
+    div.insertAdjacentHTML('beforeend', inkSvg(i, doc.ink.filter(st => st.page === i)));
+    pagesEl.append(lab, div);
+  });
+  renderMarkers(); renderGeneral();
+}
+function orderedComments(list){ return [...list].sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x); }
+function renderMarkers(){
+  pagesEl.querySelectorAll('.mk').forEach(m => m.remove());
+  if (!doc) return;
+  orderedComments(doc.comments).forEach((c, i) => {
+    const pageEl = pagesEl.querySelector(`.page[data-page="${c.page}"]`); if (!pageEl) return;
+    const m = document.createElement('div');
+    m.className = 'mk ' + c.type; m.dataset.id = c.id;
+    const cr = critOf(validCrit(c.crit));
+    if (!(rec && rec.target.kind === 'comment' && rec.target.id === c.id)) m.style.setProperty('--mk', colorOf(c));
+    m.style.left = c.x * 100 + '%'; m.style.top = c.y * 100 + '%';
+    m.innerHTML = `<span class="ic">${c.type === 'audio' ? ICON.play + ICON.pause : ICON.note}</span><span class="n">${i + 1}</span>`;
+    if (rec && rec.target.kind === 'comment' && rec.target.id === c.id) m.classList.add('rec');
+    if (c._busy) m.classList.add('busy');
+    if (c.id === selectedId) m.classList.add('sel');
+    m.title = cr.name + ' · ' + (c.type === 'audio' ? `audio ${fmt(c.dur)}${c.text ? ' — ' + c.text : ''}` : c.text);
+    pageEl.append(m);
+  });
+  updateEvalCounts();
+}
+function markerFor(id){ return pagesEl.querySelector(`.mk[data-id="${id}"]`); }
+function select(id){ selectedId = id; pagesEl.querySelectorAll('.mk').forEach(m => m.classList.toggle('sel', m.dataset.id === id)); }
+
+pagesEl.addEventListener('pointerdown', e => {
+  if (rec || !doc) return;
+  const penEraser = e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32));
+  if (e.button !== 0 && !(penEraser && mode === 'ink')) return;
+  const mk = e.target.closest('.mk');
+  if (mk){ dragMarker(e, mk); return; }
+  const pageEl = e.target.closest('.page'); if (!pageEl) return;
+  if (mode === 'ink' && !armed){
+    if (e.pointerType === 'pen') penSeen = true;
+    if (penSeen && e.pointerType === 'touch'){ fingerScroll(e); return; }   // avec un stylet, le doigt fait défiler
+    if (e.pointerType === 'touch' && inkTouch){ const t = inkTouch; t.abort(); twoFingerScroll(t.id, t.last, e); return; }   // 2e doigt : on défile
+    e.preventDefault(); closePop(); startInk(e, pageEl, penEraser); return;
+  }
+  // Doigt ou stylet : on attend un vrai « toucher » (sans glisser) pour ne pas confondre avec un défilement.
+  if (e.pointerType !== 'mouse'){
+    const sx = e.clientX, sy = e.clientY, t0 = performance.now(), id = e.pointerId;
+    const done = () => { removeEventListener('pointerup', up, true); removeEventListener('pointercancel', cancel, true); };
+    const up = ev => { if (ev.pointerId !== id) return; done(); if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 12 && performance.now() - t0 < 800) pageTap(ev, pageEl); };
+    const cancel = ev => { if (ev.pointerId === id) done(); };
+    addEventListener('pointerup', up, true); addEventListener('pointercancel', cancel, true);
+    return;
+  }
+  pageTap(e, pageEl);
+});
+function pageTap(e, pageEl){
+  if (rec || !doc) return;
+  const r = pageEl.getBoundingClientRect();
+  const x = clamp((e.clientX - r.left) / r.width, 0, 1), y = clamp((e.clientY - r.top) / r.height, 0, 1), page = +pageEl.dataset.page;
+  if (!pop.hidden){ closePop(); return; }       // un clic hors de la bulle la ferme d'abord
+  if (armed){ e.preventDefault(); placeBankItem(armed, page, x, y); return; }
+  if (mode === 'audio'){ e.preventDefault(); newAudioComment(page, x, y); }
+  else if (mode === 'text'){ e.preventDefault(); newTextComment(page, x, y); }
+  else select(null);
+}
+
+/* ---------- dessin à main levée ---------- */
+// Trait : {id, page, c: couleur, w: épaisseur (unités : 1000 = largeur de page), o: opacité, pts: [x,y,x,y…] en 0..10000}
+let inkPrefs = {color: '#dc2626', width: 3.5, tool: 'pen', hlColor: '#facc15'};
+let inkUndo = [], penSeen = false, inkTouch = null;   // inkTouch : trait en cours fait avec un doigt
+const HL = {c: '#facc15', w: 16, o: 0.5};
+const ratio = i => doc.pages[i].h / doc.pages[i].w;
+function strokePath(st, R){
+  const p = st.pts, n = p.length / 2; if (!n) return '';
+  const X = i => (p[2 * i] / 10).toFixed(1), Y = i => (p[2 * i + 1] / 10 * R).toFixed(1);
+  if (n === 1) return `M${X(0)} ${Y(0)}l0.01 0`;
+  let d = `M${X(0)} ${Y(0)}`;
+  for (let i = 1; i < n - 1; i++) d += `Q${X(i)} ${Y(i)} ${((p[2 * i] + p[2 * i + 2]) / 20).toFixed(1)} ${((p[2 * i + 1] + p[2 * i + 3]) / 20 * R).toFixed(1)}`;
+  return d + `L${X(n - 1)} ${Y(n - 1)}`;
+}
+function strokeSvg(st, R){
+  return `<path d="${strokePath(st, R)}" stroke="${st.c}" stroke-width="${st.w}"${st.o < 1 ? ` stroke-opacity="${st.o}" style="mix-blend-mode:multiply"` : ''} fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+function inkSvgFor(R, strokes){
+  return `<svg class="ink" viewBox="0 0 1000 ${(1000 * R).toFixed(1)}" preserveAspectRatio="none" aria-hidden="true">${strokes.map(st => strokeSvg(st, R)).join('')}</svg>`;
+}
+const inkSvg = (i, strokes) => inkSvgFor(ratio(i), strokes);
+function renderInk(i){
+  const pageEl = pagesEl.querySelector(`.page[data-page="${i}"]`); if (!pageEl) return;
+  pageEl.querySelector('svg.ink').outerHTML = inkSvg(i, doc.ink.filter(st => st.page === i));
+}
+function startInk(e, pageEl, penEraser){
+  const page = +pageEl.dataset.page, r = pageEl.getBoundingClientRect(), R = ratio(page);
+  const toPt = ev => [Math.round(clamp((ev.clientX - r.left) / r.width, 0, 1) * 10000), Math.round(clamp((ev.clientY - r.top) / r.height, 0, 1) * 10000)];
+  const coalesced = ev => { const l = ev.getCoalescedEvents ? ev.getCoalescedEvents() : []; return l.length ? l : [ev]; };
+  try { pageEl.setPointerCapture(e.pointerId); } catch {}
+  let move, end, abort;
+  if (penEraser || inkPrefs.tool === 'eraser'){
+    const removed = [];
+    let last = null;
+    const hit = ev => {                                       // balaye aussi l'espace entre deux positions du pointeur
+      const [x, y] = toPt(ev), from = last || [x, y]; last = [x, y];
+      const steps = Math.max(1, Math.ceil(Math.hypot((x - from[0]) / 10000 * r.width, (y - from[1]) / 10000 * r.height) / 4));
+      let any = false;
+      for (let k = 1; k <= steps; k++) any = eraseAt(page, from[0] + (x - from[0]) * k / steps, from[1] + (y - from[1]) * k / steps, r.width, removed) || any;
+      if (any) renderInk(page);
+    };
+    hit(e);
+    move = ev => coalesced(ev).forEach(hit);
+    end = () => { if (removed.length){ inkUndo.push({type: 'del', strokes: removed}); changed(); } };
+    abort = () => { [...removed].reverse().forEach(({st, index}) => doc.ink.splice(Math.min(index, doc.ink.length), 0, st)); renderInk(page); };
+  } else {
+    const hl = inkPrefs.tool === 'hl';
+    const st = {id: uid(), page, c: hl ? (inkPrefs.hlColor || HL.c) : inkPrefs.color, w: hl ? HL.w : inkPrefs.width, o: hl ? HL.o : 1, pts: toPt(e)};
+    const svg = pageEl.querySelector('svg.ink');
+    svg.insertAdjacentHTML('beforeend', strokeSvg(st, R));
+    const path = svg.lastElementChild;
+    move = ev => {
+      if (ev.shiftKey){                                       // Maj enfoncée : trait droit
+        const [x, y] = toPt(ev); st.pts = [st.pts[0], st.pts[1], x, y];
+        path.setAttribute('d', strokePath(st, R)); return;
+      }
+      let added = false;
+      for (const c of coalesced(ev)){
+        const [x, y] = toPt(c), n = st.pts.length;
+        if (Math.hypot(x - st.pts[n - 2], (y - st.pts[n - 1]) * R) >= 6){ st.pts.push(x, y); added = true; }
+      }
+      if (added) path.setAttribute('d', strokePath(st, R));
+    };
+    end = () => { doc.ink.push(st); inkUndo.push({type: 'add', id: st.id}); changed(); renderInk(page); };
+    abort = () => path.remove();
+  }
+  const detach = () => { pageEl.removeEventListener('pointermove', onMove); pageEl.removeEventListener('pointerup', up); pageEl.removeEventListener('pointercancel', up); };
+  const onMove = ev => { if (ev.pointerId !== e.pointerId) return; if (inkTouch) inkTouch.last = [ev.clientX, ev.clientY]; move(ev); };
+  const up = ev => {
+    if (ev.pointerId !== e.pointerId) return;
+    detach(); inkTouch = null;
+    if (ev.type === 'pointerup') move(ev);
+    end();
+  };
+  if (e.pointerType === 'touch') inkTouch = {id: e.pointerId, last: [e.clientX, e.clientY], abort: () => { detach(); inkTouch = null; abort(); }};
+  pageEl.addEventListener('pointermove', onMove); pageEl.addEventListener('pointerup', up); pageEl.addEventListener('pointercancel', up);
+}
+// En mode Dessin au doigt : un deuxième doigt annule le trait commencé et fait défiler la page.
+function twoFingerScroll(id1, pos1, e2){
+  const pts = new Map([[id1, pos1], [e2.pointerId, [e2.clientX, e2.clientY]]]);
+  const mid = () => { let x = 0, y = 0; pts.forEach(p => { x += p[0]; y += p[1]; }); return [x / pts.size, y / pts.size]; };
+  let m = mid();
+  const move = ev => { if (!pts.has(ev.pointerId)) return; pts.set(ev.pointerId, [ev.clientX, ev.clientY]); const n = mid(); scrollBy(m[0] - n[0], m[1] - n[1]); m = n; };
+  const end = ev => { if (!pts.has(ev.pointerId)) return; removeEventListener('pointermove', move, true); removeEventListener('pointerup', end, true); removeEventListener('pointercancel', end, true); };
+  addEventListener('pointermove', move, true); addEventListener('pointerup', end, true); addEventListener('pointercancel', end, true);
+}
+// Efface les traits qui passent près du point (x, y), en tenant compte de leur épaisseur.
+function eraseAt(page, x, y, W, removed){
+  const R = ratio(page), px = 10000 / W;                       // unités par pixel affiché
+  let any = false;
+  for (let k = doc.ink.length - 1; k >= 0; k--){
+    const st = doc.ink[k]; if (st.page !== page) continue;
+    const tol = (8 + st.w / 1000 * W / 2) * px, p = st.pts;
+    let hit = false;
+    for (let i = 0; i < p.length && !hit; i += 2){
+      const ax = p[i], ay = p[i + 1] * R, bx = p[i + 2] ?? ax, by = (p[i + 3] ?? p[i + 1]) * R, qx = x, qy = y * R;
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      const t = L ? clamp(((qx - ax) * dx + (qy - ay) * dy) / L, 0, 1) : 0;
+      if (Math.hypot(qx - (ax + t * dx), qy - (ay + t * dy)) <= tol) hit = true;
+    }
+    if (hit){ removed.push({st, index: k}); doc.ink.splice(k, 1); any = true; }
+  }
+  return any;
+}
+function undoInk(){
+  const op = inkUndo.pop(); if (!op || !doc){ toast('Rien à annuler.'); return; }
+  const pages = new Set();
+  if (op.type === 'add'){ const i = doc.ink.findIndex(st => st.id === op.id); if (i >= 0){ pages.add(doc.ink[i].page); doc.ink.splice(i, 1); } }
+  else [...op.strokes].reverse().forEach(({st, index}) => { doc.ink.splice(Math.min(index, doc.ink.length), 0, st); pages.add(st.page); });
+  pages.forEach(renderInk); changed();
+}
+function fingerScroll(e){
+  let y0 = e.clientY;
+  const move = ev => { if (ev.pointerId !== e.pointerId) return; window.scrollBy(0, y0 - ev.clientY); y0 = ev.clientY; };
+  const up = ev => { if (ev.pointerId !== e.pointerId) return; removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+  addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+}
+function setInkTool(tool, color, width, hlColor){
+  if (tool) inkPrefs.tool = tool;
+  if (hlColor) inkPrefs.hlColor = hlColor;
+  if (color) inkPrefs.color = color;
+  if (width) inkPrefs.width = width;
+  document.querySelectorAll('#inkBar [data-ink]').forEach(b => {
+    const v = b.dataset.ink;
+    b.classList.toggle('on', v === 'eraser' ? inkPrefs.tool === 'eraser' : inkPrefs.tool === 'pen' && v === inkPrefs.color);
+  });
+  document.querySelectorAll('#inkBar [data-hl]').forEach(b => b.classList.toggle('on', inkPrefs.tool === 'hl' && b.dataset.hl === (inkPrefs.hlColor || HL.c)));
+  document.querySelectorAll('#inkBar [data-w]').forEach(b => b.classList.toggle('on', +b.dataset.w === inkPrefs.width && inkPrefs.tool === 'pen'));
+  document.body.classList.toggle('eraser', inkPrefs.tool === 'eraser');
+  safe(DB.set('ink', inkPrefs));
+}
+$('#inkBar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'inkUndo'){ undoInk(); return; }
+  if (b.dataset.w) setInkTool('pen', null, +b.dataset.w);
+  else if (b.dataset.ink === 'eraser') setInkTool(inkPrefs.tool === 'eraser' ? 'pen' : 'eraser');
+  else if (b.dataset.hl) setInkTool('hl', null, null, b.dataset.hl);
+  else setInkTool('pen', b.dataset.ink);
+});
+
+function dragMarker(e, mk){
+  e.preventDefault();
+  const c = byId(mk.dataset.id); if (!c) return;
+  const r = mk.parentElement.getBoundingClientRect(), sx = e.clientX, sy = e.clientY; let moved = false;
+  mk.setPointerCapture(e.pointerId);
+  const move = ev => {
+    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+    if (!moved){ moved = true; closePop(); mk.style.cursor = 'grabbing'; }
+    c.x = clamp((ev.clientX - r.left) / r.width, 0, 1); c.y = clamp((ev.clientY - r.top) / r.height, 0, 1);
+    mk.style.left = c.x * 100 + '%'; mk.style.top = c.y * 100 + '%';
+  };
+  const up = () => {
+    mk.removeEventListener('pointermove', move); mk.removeEventListener('pointerup', up); mk.removeEventListener('pointercancel', up);
+    if (moved){ changed(); renderMarkers(); select(c.id); } else openPop(c.id);
+  };
+  mk.addEventListener('pointermove', move); mk.addEventListener('pointerup', up); mk.addEventListener('pointercancel', up);
+}
+
+async function newAudioComment(page, x, y){
+  const c = {id: uid(), page, x, y, type: 'audio', text: '', audio: null, dur: 0, crit: validCrit(activeCrit)};
+  doc.comments.push(c); selectedId = c.id;
+  onRecStart = () => renderMarkers();
+  const res = await record({kind: 'comment', id: c.id}, () => { c._busy = true; renderMarkers(); });
+  delete c._busy;
+  if (!res){ doc.comments = doc.comments.filter(k => k !== c); selectedId = null; renderMarkers(); return; }
+  c.audio = res.url; c.dur = res.dur; changed(); renderMarkers();
+}
+function newTextComment(page, x, y){
+  const c = {id: uid(), page, x, y, type: 'text', text: '', audio: null, dur: 0, crit: validCrit(activeCrit)};
+  doc.comments.push(c); renderMarkers(); openPop(c.id);
+}
+function placeBankItem(itemId, page, x, y){
+  const it = bank.find(b => b.id === itemId); disarm(); if (!it) return;
+  const c = {id: uid(), page, x, y, type: it.audio ? 'audio' : 'text', text: it.text || '', audio: it.audio || null, dur: it.dur || 0, crit: validCrit(it.crit)};
+  doc.comments.push(c); selectedId = c.id; changed(); renderMarkers();
+  it.uses = (it.uses || 0) + 1; safe(DB.put(it));
+  toast(`« ${it.name} » placé.`);
+}
+function deleteComment(id){
+  if (!doc) return;
+  doc.comments = doc.comments.filter(c => c.id !== id);
+  if (selectedId === id) selectedId = null;
+  closePop(true); changed(); renderMarkers();
+}
+
+/* ---------- bulle d'édition ---------- */
+let popId = null;
+function openPop(id){
+  const c = byId(id); if (!c) return;
+  closePop(); popId = id; select(id);
+  const n = orderedComments(doc.comments).indexOf(c) + 1;
+  const audioRow = c.type === 'audio'
+    ? `<div class="row"><button data-act="play">▶ Écouter (${fmt(c.dur)})</button><button data-act="rerec">🎤 Réenregistrer</button></div>` : '';
+  pop.innerHTML = `
+    <div class="pop-head"><b>${c.type === 'audio' ? '🔊 Commentaire audio' : '✏️ Commentaire écrit'} n° ${n}</b><span class="muted">p. ${c.page + 1}</span><button class="ghost" data-act="close" title="Fermer (Échap)">✕</button></div>
+    <div class="row"><span class="cdot" id="popDot" style="background:${critOf(validCrit(c.crit)).color}"></span><select id="popCrit" aria-label="Critère">${critOptions(validCrit(c.crit))}</select></div>
+    <div class="row colrow" id="popColors"></div>
+    ${audioRow}
+    <textarea placeholder="${c.type === 'audio' ? 'Texte facultatif, affiché avec l\'audio…' : 'Votre commentaire…'}">${esc(c.text)}</textarea>
+    <div class="row"><button data-act="bank">⭐ Ajouter à la banque</button><span class="spacer"></span><button data-act="del" class="danger">Supprimer</button>${c.type === 'text' ? '<button data-act="close" class="primary">OK</button>' : ''}</div>`;
+  pop.hidden = false; positionPop();
+  const renderPopColors = () => {
+    const cur = isHex(c.color) ? c.color.toLowerCase() : '';
+    $('#popColors').innerHTML = `<span class="lbl">Couleur</span><button class="auto${cur ? '' : ' on'}" data-pc="" title="Couleur ${colorMode === 'uniform' ? 'unique' : 'du critère'}">Auto</button>` +
+      COLORS.map(x => `<button class="sw${x === cur ? ' on' : ''}" data-pc="${x}" style="background:${x}" aria-label="Couleur ${x}"></button>`).join('') +
+      `<input type="color" data-pcc value="${cur || colorOf(c)}" title="Autre couleur">`;
+  };
+  renderPopColors();
+  $('#popColors').addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if (!b) return; if (b.dataset.pc) c.color = b.dataset.pc; else delete c.color; changed(); renderMarkers(); renderPopColors(); });
+  $('#popColors').addEventListener('input', e => { if (!e.target.matches('[data-pcc]')) return; c.color = e.target.value; changed(); renderMarkers(); $('#popColors').querySelectorAll('[data-pc]').forEach(b => b.classList.remove('on')); });
+  $('#popCrit').addEventListener('change', e => { c.crit = validCrit(e.target.value); $('#popDot').style.background = critOf(c.crit).color; changed(); renderMarkers(); });
+  const ta = pop.querySelector('textarea');
+  ta.addEventListener('input', () => { c.text = ta.value; changed(); });
+  if (c.type === 'text') setTimeout(() => ta.focus(), 0);
+  pop.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async ev => {
+    const act = b.dataset.act;
+    if (act === 'close') closePop();
+    else if (act === 'del') deleteComment(c.id);
+    else if (act === 'play') play('c' + c.id, c.audio, b);
+    else if (act === 'bank'){
+      if (c.type === 'text' && !c.text.trim()){ toast('Écrivez d\'abord le commentaire.'); return; }
+      openBankDialog({id: uid(), name: (c.text.trim().split('\n')[0] || 'Commentaire audio').slice(0, 60), text: c.text, audio: c.audio, dur: c.dur, crit: validCrit(c.crit)}, true);
+    }
+    else if (act === 'rerec'){
+      closePop(true);
+      onRecStart = () => renderMarkers();
+      const res = await record({kind: 'comment', id: c.id}, () => { c._busy = true; renderMarkers(); });
+      delete c._busy;
+      if (res){ c.audio = res.url; c.dur = res.dur; changed(); }
+      renderMarkers();
+    }
+  }));
+}
+function positionPop(){
+  if (pop.hidden || !popId) return;
+  const mk = markerFor(popId); if (!mk){ closePop(); return; }
+  const r = mk.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight, top0 = $('#topbar').offsetHeight;
+  let left = r.right + 14; if (left + w > innerWidth - 10) left = r.left - w - 14;
+  pop.style.left = clamp(left, 10, innerWidth - w - 10) + 'px';
+  pop.style.top = clamp(r.top - 12, top0 + 8, innerHeight - h - 10) + 'px';
+}
+function closePop(keepEmpty){
+  if (pop.hidden) return;
+  stopPlayback(); pop.hidden = true;
+  const c = byId(popId); popId = null;
+  if (!keepEmpty && c && c.type === 'text' && !c.text.trim()){ doc.comments = doc.comments.filter(k => k !== c); selectedId = null; }
+  renderMarkers();
+}
+addEventListener('scroll', positionPop, {passive: true}); addEventListener('resize', positionPop);
+
+/* ---------- commentaire général ---------- */
+function renderGeneral(){
+  const g = doc.general, box = $('#genAudio');
+  box.innerHTML = g.audio
+    ? `<button data-g="play">▶ Écouter l'audio général (${fmt(g.dur)})</button><button data-g="rec">🎤 Réenregistrer</button><button data-g="del" class="danger">Retirer l'audio</button>`
+    : `<button data-g="rec">🎤 Enregistrer un audio général</button>`;
+  box.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', async () => {
+    const a = b.dataset.g;
+    if (a === 'play') play('g', g.audio, b);
+    else if (a === 'del'){ g.audio = null; g.dur = 0; changed(); renderGeneral(); }
+    else if (a === 'rec'){
+      onRecStart = () => { box.innerHTML = '<span class="muted">● Enregistrement <b class="recTime">0:00</b>…</span>'; };
+      const res = await record({kind: 'general'}, () => { box.innerHTML = '<span class="muted">Traitement…</span>'; });
+      if (res){ g.audio = res.url; g.dur = res.dur; changed(); }
+      renderGeneral();
+    }
+  }));
+}
+$('#genText').addEventListener('input', e => { if (doc){ doc.general.text = e.target.value; changed(); } });
+
+/* ---------- critères (grille d'évaluation) ---------- */
+const NONE = {id: 'none', name: 'Non classé', color: '#8b9099'};
+const PALETTE = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#4f46e5', '#dc2626', '#0d9488'];
+const COLORS = ['#c2410c', '#dc2626', '#db2777', '#9333ea', '#4f46e5', '#2563eb', '#0891b2', '#0d9488', '#16a34a', '#ca8a04', '#6b7280'];   // choix proposés (rose et violet inclus)
+const isHex = v => /^#[0-9a-f]{6}$/i.test(v || '');
+let colorMode = 'crit', uniformColor = '#c2410c';
+// Couleur affichée d'un commentaire : sa couleur à lui, sinon la couleur unique, sinon celle de son critère
+const colorOf = c => isHex(c.color) ? c.color : colorMode === 'uniform' ? uniformColor : critOf(validCrit(c.crit)).color;
+function saveColors(){ safe(DB.set('colors', {mode: colorMode, uniform: uniformColor})); }
+function renderColorMode(){
+  document.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('active', b.dataset.cm === colorMode));
+  const pick = $('#uniformPick'); pick.hidden = colorMode !== 'uniform';
+  pick.innerHTML = COLORS.map(c => `<button type="button" data-uc="${c}" style="background:${c}" class="${c === uniformColor ? 'on' : ''}" aria-label="Couleur ${c}"></button>`).join('') +
+    `<input type="color" id="uniformCustom" value="${uniformColor}" title="Autre couleur">`;
+  $('#cmodeNote').textContent = colorMode === 'uniform'
+    ? 'Toutes les pastilles ont la même couleur (sauf celles à qui vous donnez une couleur). Les critères servent à classer et à noter.'
+    : 'Chaque pastille prend la couleur de son critère. L\'étudiant voit la même chose.';
+}
+document.querySelectorAll('[data-cm]').forEach(b => b.addEventListener('click', () => { colorMode = b.dataset.cm; saveColors(); renderColorMode(); renderBank(); if (doc) renderMarkers(); }));
+$('#uniformPick').addEventListener('click', e => { const b = e.target.closest('[data-uc]'); if (!b) return; uniformColor = b.dataset.uc; saveColors(); renderColorMode(); renderBank(); if (doc) renderMarkers(); });
+$('#uniformPick').addEventListener('input', e => { if (e.target.id !== 'uniformCustom') return; uniformColor = e.target.value; saveColors(); pick_off(); renderBank(); if (doc) renderMarkers(); });
+function pick_off(){ document.querySelectorAll('#uniformPick [data-uc]').forEach(b => b.classList.toggle('on', b.dataset.uc === uniformColor)); }
+let criteria = [], activeCrit = 'none';
+const critOf = id => criteria.find(c => c.id === id) || NONE;
+const validCrit = id => criteria.some(c => c.id === id) ? id : 'none';
+const allCrits = () => [...criteria, NONE];
+const nextColor = () => PALETTE.find(p => !criteria.some(c => c.color.toLowerCase() === p)) || PALETTE[criteria.length % PALETTE.length];
+function saveCriteria(){ safe(DB.set('criteria', criteria)); }
+function critOptions(sel){
+  return allCrits().map((c, i) => {
+    const key = c.id === 'none' ? '0' : (i < 9 ? String(i + 1) : '');
+    return `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${key ? key + ' · ' : ''}${esc(c.name)}</option>`;
+  }).join('');
+}
+function setActiveCrit(id){
+  activeCrit = validCrit(id);
+  $('#activeCrit').value = activeCrit; $('#activeDot').style.background = critOf(activeCrit).color;
+  safe(DB.set('activeCrit', activeCrit)); updateStatus();
+}
+$('#activeCrit').addEventListener('change', e => { setActiveCrit(e.target.value); e.target.blur(); });
+function renderCritUI(){
+  activeCrit = validCrit(activeCrit);
+  $('#activeCrit').innerHTML = critOptions(activeCrit); $('#activeDot').style.background = critOf(activeCrit).color;
+  renderEval(); renderBank(); if (doc) renderMarkers(); updateStatus();
+}
+// Fusionne une liste de critères venue d'un fichier ; renvoie {idReçu: idLocal}
+function mergeCriteria(list){
+  const map = {};
+  for (const inc of list || []){
+    if (!inc || !inc.name) continue;
+    const same = criteria.find(c => c.id === inc.id) || criteria.find(c => c.name.trim().toLowerCase() === inc.name.trim().toLowerCase());
+    if (same) map[inc.id] = same.id;
+    else { const c = {id: inc.id && inc.id !== 'none' ? inc.id : uid(), name: inc.name.trim(), color: inc.color || nextColor()}; criteria.push(c); map[inc.id] = c.id; }
+  }
+  saveCriteria(); return map;
+}
+function critByName(name){
+  name = (name || '').trim(); if (!name) return 'none';
+  let c = criteria.find(x => x.name.trim().toLowerCase() === name.toLowerCase());
+  if (!c){ c = {id: uid(), name, color: nextColor()}; criteria.push(c); saveCriteria(); }
+  return c.id;
+}
+
+/* évaluation par critère (notes libres) */
+function renderEval(){
+  const box = $('#evalCard');
+  if (!doc){ box.hidden = true; return; }
+  box.hidden = false;
+  const head = `<div><b>Évaluation par critère</b> <span class="muted">— notes libres (ex. : B, 6/8), affichées à l'étudiant</span></div>`;
+  if (!criteria.length){ box.innerHTML = head + `<p class="muted" style="margin:8px 0 0">Créez vos critères avec <b>+ Critère</b> dans le panneau de droite.</p>`; return; }
+  box.innerHTML = head + `<div class="eval-grid">` + criteria.map(c =>
+    `<span class="cdot" style="background:${c.color}"></span><span>${esc(c.name)}</span><span class="ev-n" data-n="${c.id}"></span><input data-g="${c.id}" value="${esc(doc.grades[c.id] || '')}" placeholder="—" maxlength="24" aria-label="Note : ${esc(c.name)}">`).join('') +
+    `<hr><span></span><span class="final">Note finale</span><span></span><input data-g="__final" class="final" value="${esc(doc.final || '')}" placeholder="—" maxlength="24" aria-label="Note finale"></div>`;
+  box.querySelectorAll('input[data-g]').forEach(inp => inp.addEventListener('input', () => {
+    if (inp.dataset.g === '__final') doc.final = inp.value; else doc.grades[inp.dataset.g] = inp.value;
+    changed();
+  }));
+  updateEvalCounts();
+}
+function updateEvalCounts(){
+  if (!doc) return;
+  document.querySelectorAll('#evalCard .ev-n').forEach(el => {
+    const n = doc.comments.filter(c => validCrit(c.crit) === el.dataset.n).length;
+    el.textContent = n ? n + ' commentaire' + (n > 1 ? 's' : '') : 'aucun commentaire';
+  });
+}
+
+/* dialogue d'un critère */
+let critEdit = null;
+function openCritDialog(c){
+  critEdit = c ? {...c} : {id: uid(), name: '', color: nextColor(), isNew: true};
+  $('#critTitle').textContent = critEdit.isNew ? 'Nouveau critère' : 'Modifier le critère';
+  $('#critName').value = critEdit.name; renderSwatches();
+  $('#critDlg').showModal(); setTimeout(() => $('#critName').focus(), 0);
+}
+function renderSwatches(){
+  const box = $('#critSwatches'), cur = critEdit.color.toLowerCase();
+  box.innerHTML = COLORS.map(p => `<button type="button" data-col="${p}" style="background:${p}" class="${p === cur ? 'on' : ''}" aria-label="Couleur ${p}"></button>`).join('') +
+    `<input type="color" id="critCustom" value="${critEdit.color}" title="Autre couleur">`;
+  box.querySelectorAll('[data-col]').forEach(b => b.addEventListener('click', () => { critEdit.color = b.dataset.col; renderSwatches(); }));
+  $('#critCustom').addEventListener('input', e => { critEdit.color = e.target.value; box.querySelectorAll('[data-col]').forEach(b => b.classList.remove('on')); });
+}
+$('#critForm').addEventListener('submit', e => {
+  if (!e.submitter || e.submitter.value !== 'ok') return;
+  const name = $('#critName').value.trim();
+  if (!name){ e.preventDefault(); toast('Donnez un nom au critère.'); return; }
+  if (criteria.some(c => c.id !== critEdit.id && c.name.trim().toLowerCase() === name.toLowerCase())){ e.preventDefault(); toast('Ce critère existe déjà.'); return; }
+  const {isNew, ...c} = critEdit; c.name = name;
+  const i = criteria.findIndex(x => x.id === c.id);
+  if (i >= 0) criteria[i] = c; else criteria.push(c);
+  saveCriteria(); renderCritUI(); if (doc) changed();
+  toast(isNew ? `Critère « ${name} » ajouté.` : 'Critère modifié.');
+});
+$('#critNew').addEventListener('click', () => openCritDialog(null));
+function deleteCrit(id){
+  const c = critOf(id); if (c === NONE) return;
+  if (!confirm(`Supprimer le critère « ${c.name} » ?\nSes commentaires (banque et rapport ouvert) deviendront « Non classé ».`)) return;
+  criteria = criteria.filter(x => x.id !== id); saveCriteria();
+  bank.forEach(it => { if (it.crit === id){ it.crit = 'none'; safe(DB.put(it)); } });
+  if (doc){ doc.comments.forEach(cm => { if (cm.crit === id) cm.crit = 'none'; }); delete doc.grades[id]; changed(); }
+  renderCritUI(); toast(`Critère « ${c.name} » supprimé.`);
+}
+
+/* panneau de la banque sur tablette et téléphone */
+$('#btnBank').addEventListener('click', () => document.body.classList.toggle('bank-open'));
+$('#viewer').addEventListener('pointerdown', e => {
+  if (document.body.classList.contains('bank-open') && matchMedia('(max-width:900px)').matches){ document.body.classList.remove('bank-open'); e.stopPropagation(); e.preventDefault(); }
+}, true);
+
+/* ---------- banque ---------- */
+const bankJson = () => JSON.stringify({app: 'correcteur-criteres', type: 'banque', v: 3, criteria, items: [...bank].sort(byOrder)});
+function bankSub(it){ return (it.audio ? '🔊 ' + fmt(it.dur) + (it.text ? ' · ' : '') : '') + (it.text || ''); }
+let collapsed = new Set();
+const cmp = (a, b) => a.localeCompare(b, 'fr', {sensitivity: 'base', numeric: true});
+const nextOrder = () => bank.reduce((m, it) => Math.max(m, typeof it.order === 'number' ? it.order : -1), -1) + 1;
+const byOrder = (a, b) => (a.order ?? 1e9) - (b.order ?? 1e9) || cmp(a.name, b.name);
+function bankItemHtml(it){
+  const col = colorMode === 'uniform' ? uniformColor : critOf(validCrit(it.crit)).color;
+  return `
+    <li class="bk${armed === it.id ? ' armed' : ''}" data-id="${it.id}">
+      <span class="grip" title="Glisser pour déplacer">⠿</span>
+      <button class="bk-main" data-act="arm" title="Cliquer, puis cliquer dans le rapport pour placer">
+        <span class="bk-ic${it.audio ? '' : ' t'}" style="background:${col}">${it.audio ? ICON.play : ICON.note}</span>
+        <span class="bk-name">${esc(it.name)}</span><span class="bk-sub">${esc(bankSub(it))}</span>
+      </button>
+      <span class="bk-tools">${it.audio ? '<button data-act="play" title="Écouter">▶</button>' : ''}<button data-act="edit" title="Modifier (nom, critère, audio, texte)">✎</button><button data-act="del" title="Supprimer">🗑</button></span>
+    </li>`;
+}
+function renderBank(){
+  const q = $('#bankSearch').value.trim().toLowerCase();
+  const list = bank.filter(it => !q || (it.name + ' ' + (it.text || '') + ' ' + critOf(validCrit(it.crit)).name).toLowerCase().includes(q));
+  const ul = $('#bankList');
+  $('#bankFold').hidden = !criteria.length || !!q;
+  $('#bank').classList.toggle('searching', !!q);
+  if (!bank.length && !criteria.length){ ul.innerHTML = '<li class="bank-empty">Commencez par créer vos critères avec <b>+ Critère</b> (ex. : « Analyse des données »). Ajoutez ensuite vos commentaires fréquents ici, ou cliquez ⭐ <b>Ajouter à la banque</b> sur une pastille placée.</li>'; return; }
+  if (q && !list.length){ ul.innerHTML = '<li class="bank-empty">Aucun résultat.</li>'; return; }
+  const groups = new Map(allCrits().map(c => [c.id, []]));
+  for (const it of list) groups.get(validCrit(it.crit)).push(it);
+  ul.innerHTML = allCrits().map(c => {
+    const items = groups.get(c.id).sort(byOrder), isNone = c.id === 'none';
+    if (q && !items.length) return '';
+    const open = q || !collapsed.has(c.id) || items.some(it => it.id === armed);
+    return `<li class="sec" data-crit="${c.id}"><details${open ? ' open' : ''}>
+      <summary>${isNone ? '' : '<span class="grip sec-grip" title="Glisser pour déplacer le critère">⠿</span>'}<span class="chev">▸</span><span class="cdot" style="background:${c.color}"></span><span class="sec-name${isNone ? ' none' : ''}">${esc(c.name)}</span><span class="sec-count">${items.length}</span>${isNone ? '' : '<button data-act="editcrit" title="Renommer / changer la couleur">✎</button><button data-act="delcrit" title="Supprimer le critère">🗑</button>'}</summary>
+      <ul class="sec-items">${items.length ? items.map(bankItemHtml).join('') : '<li class="sec-empty">Aucun commentaire : glissez-en un ici ou créez-en un.</li>'}</ul></details></li>`;
+  }).join('');
+}
+// Mémoriser les critères repliés (sauf pendant une recherche, où tout est déplié)
+$('#bankList').addEventListener('toggle', e => {
+  if ($('#bankSearch').value.trim()) return;
+  const li = e.target.closest('.sec'); if (!li) return;
+  if (e.target.open) collapsed.delete(li.dataset.crit); else collapsed.add(li.dataset.crit);
+  safe(DB.set('collapsed', [...collapsed]));
+}, true);
+function foldAll(fold){
+  collapsed = fold ? new Set(allCrits().map(c => c.id)) : new Set();
+  safe(DB.set('collapsed', [...collapsed])); renderBank();
+}
+$('#foldAll').addEventListener('click', () => foldAll(true));
+$('#unfoldAll').addEventListener('click', () => foldAll(false));
+$('#bankList').addEventListener('click', e => {
+  if (e.target.closest('.grip')){ e.preventDefault(); return; }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  if (b.dataset.act === 'editcrit'){ e.preventDefault(); openCritDialog(critOf(b.closest('.sec').dataset.crit)); return; }
+  if (b.dataset.act === 'delcrit'){ e.preventDefault(); deleteCrit(b.closest('.sec').dataset.crit); return; }
+  const id = b.closest('.bk').dataset.id, it = bank.find(x => x.id === id); if (!it) return;
+  const act = b.dataset.act;
+  if (act === 'arm'){
+    if (!doc){ toast('Ouvrez d\'abord un rapport.'); return; }
+    closePop(); armed = armed === id ? null : id; document.body.classList.toggle('armed', !!armed); renderBank(); updateStatus();
+    if (armed) document.body.classList.remove('bank-open');   // panneau glissant : on le referme pour toucher le rapport
+  }
+  else if (act === 'play') play('b' + id, it.audio, null);
+  else if (act === 'edit') openBankDialog({...it}, false);
+  else if (act === 'del'){
+    if (!confirm(`Supprimer « ${it.name} » de la banque ?`)) return;
+    bank = bank.filter(x => x.id !== id); if (armed === id) disarm(); safe(DB.del(id)); renderBank();
+  }
+});
+/* glisser-déposer dans la banque : poignée ⠿ (commentaires et critères) */
+let bdrag = null;
+$('#bankList').addEventListener('pointerdown', e => {
+  const grip = e.target.closest('.grip'); if (!grip || e.button !== 0 || rec) return;
+  e.preventDefault(); e.stopPropagation();
+  const isSec = grip.classList.contains('sec-grip');
+  const el = isSec ? grip.closest('.sec') : grip.closest('.bk');
+  const shown = isSec ? el.querySelector('summary') : el;
+  const r = shown.getBoundingClientRect();
+  const ghost = document.createElement(isSec ? 'div' : 'ul'); ghost.className = 'drag-ghost' + (isSec ? ' sec' : '');
+  ghost.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;padding:${isSec ? '0 6px' : '0'}`;
+  ghost.append(shown.cloneNode(true)); if (!isSec) ghost.firstChild.style.marginBottom = '0';
+  document.body.append(ghost);
+  const ph = document.createElement('li'); ph.className = 'drop-ph'; ph.style.height = Math.min(r.height, 60) + 'px';
+  el.after(ph); el.style.display = 'none';
+  bdrag = {el, ghost, ph, isSec, dy: e.clientY - r.top, openTimer: 0, openFor: null};
+  document.body.classList.add('bank-dragging');
+  addEventListener('pointermove', bankDragMove); addEventListener('pointerup', bankDragEnd); addEventListener('pointercancel', bankDragEnd);
+});
+function bankDragMove(e){
+  const d = bdrag; if (!d) return;
+  d.ghost.style.top = (e.clientY - d.dy) + 'px';
+  const panel = $('#bank'), pr = panel.getBoundingClientRect();
+  if (e.clientY < pr.top + 50) panel.scrollTop -= 14; else if (e.clientY > pr.bottom - 50) panel.scrollTop += 14;
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  if (!under || !under.closest('#bankList')) return;
+  const before = node => { const rr = node.getBoundingClientRect(); return e.clientY < rr.top + rr.height / 2; };
+  if (d.isSec){
+    const sec = under.closest('.sec'); if (!sec || sec === d.el) return;
+    if (sec.dataset.crit === 'none' || before(sec)) sec.before(d.ph); else sec.after(d.ph);
+    return;
+  }
+  const bk = under.closest('.bk');
+  if (bk && bk !== d.el){ if (before(bk)) bk.before(d.ph); else bk.after(d.ph); return; }
+  const sec = under.closest('.sec');
+  if (sec){
+    const det = sec.querySelector('details'), items = sec.querySelector('.sec-items');
+    if (under.closest('summary')){
+      if (!det.open){
+        if (d.openFor !== sec){ clearTimeout(d.openTimer); d.openFor = sec; d.openTimer = setTimeout(() => { det.open = true; }, 450); }
+        items.append(d.ph);            // déposer sur un critère replié = à la fin
+      } else items.prepend(d.ph);
+    } else if (under.closest('.sec-items') === items && !items.contains(d.ph)) items.append(d.ph);
+  }
+}
+function bankDragEnd(){
+  const d = bdrag; if (!d) return; bdrag = null;
+  removeEventListener('pointermove', bankDragMove); removeEventListener('pointerup', bankDragEnd); removeEventListener('pointercancel', bankDragEnd);
+  clearTimeout(d.openTimer); d.ghost.remove(); document.body.classList.remove('bank-dragging');
+  d.ph.replaceWith(d.el); d.el.style.display = '';
+  if (d.isSec){
+    const ids = [...$('#bankList').querySelectorAll(':scope > .sec')].map(li => li.dataset.crit).filter(id => id !== 'none');
+    criteria = ids.map(id => criteria.find(c => c.id === id)).filter(Boolean).concat(criteria.filter(c => !ids.includes(c.id)));
+    saveCriteria(); renderCritUI(); if (doc) changed();
+    return;
+  }
+  const secLi = d.el.closest('.sec'), crit = secLi ? secLi.dataset.crit : 'none';
+  const moved = bank.find(b => b.id === d.el.dataset.id), was = moved ? validCrit(moved.crit) : crit;
+  [...d.el.parentElement.querySelectorAll(':scope > .bk')].forEach((li, i) => {
+    const it = bank.find(b => b.id === li.dataset.id); if (!it) return;
+    it.order = i; it.crit = crit; safe(DB.put(it));
+  });
+  if (moved && crit !== was){ collapsed.delete(crit); safe(DB.set('collapsed', [...collapsed])); toast(`« ${moved.name} » déplacé dans « ${critOf(crit).name} ».`); }
+  renderBank();
+}
+
+function disarm(update = true){ armed = null; document.body.classList.remove('armed'); renderBank(); if (update) updateStatus(); }
+$('#bankSearch').addEventListener('input', renderBank);
+
+/* dialogue de la banque */
+let dlg = null;
+function renderDlgAudio(){
+  const box = $('#dlgAudio'), it = dlg.item;
+  if (rec && rec.target.kind === 'dlg'){ box.innerHTML = '<button id="dlgStop" class="primary">⏹ Arrêter <span class="recTime">0:00</span></button><span class="muted">ou Espace</span>'; return; }
+  box.innerHTML = it.audio
+    ? `<button type="button" data-d="play">▶ Écouter (${fmt(it.dur)})</button><button type="button" data-d="rec">🎤 Réenregistrer</button><button type="button" data-d="del" class="danger">Retirer</button>`
+    : `<button type="button" data-d="rec">🎤 Enregistrer</button><span class="muted">aucun audio</span>`;
+  box.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => {
+    const a = b.dataset.d;
+    if (a === 'play') play('d', it.audio, b);
+    else if (a === 'del'){ it.audio = null; it.dur = 0; renderDlgAudio(); }
+    else dlgRecord();
+  }));
+}
+async function dlgRecord(){
+  onRecStart = renderDlgAudio;
+  const res = await record({kind: 'dlg'}, () => { $('#dlgAudio').innerHTML = '<span class="muted">Traitement…</span>'; });
+  if (dlg && res){ dlg.item.audio = res.url; dlg.item.dur = res.dur; }
+  if (dlg) renderDlgAudio();
+}
+function openBankDialog(item, isNew, autoRec){
+  dlg = {item, isNew};
+  $('#dlgTitle').textContent = isNew ? 'Nouveau commentaire pour la banque' : 'Modifier le commentaire';
+  $('#dlgName').value = item.name || ''; $('#dlgText').value = item.text || '';
+  $('#dlgCrit').innerHTML = critOptions(validCrit(item.crit !== undefined ? item.crit : activeCrit));
+  renderDlgAudio(); $('#bankDlg').showModal();
+  if (autoRec) dlgRecord(); else setTimeout(() => (item.name ? $('#dlgText') : $('#dlgName')).focus(), 0);
+}
+$('#bankForm').addEventListener('submit', e => {
+  if (e.submitter && e.submitter.value === 'ok'){
+    const it = dlg.item; it.name = $('#dlgName').value.trim(); it.text = $('#dlgText').value;
+    if (!it.audio && !it.text.trim()){ e.preventDefault(); toast('Ajoutez un audio ou un texte.'); return; }
+    if (!it.name) it.name = (it.text.trim().split('\n')[0] || 'Commentaire audio').slice(0, 60);
+    const crit = validCrit($('#dlgCrit').value);
+    if (dlg.isNew || typeof it.order !== 'number' || crit !== validCrit(it.crit)) it.order = nextOrder();   // à la fin de son critère
+    it.crit = crit; delete it.section;
+    collapsed.delete(crit); safe(DB.set('collapsed', [...collapsed]));
+    it.created = it.created || Date.now();
+    bank = bank.filter(x => x.id !== it.id); bank.push(it); safe(DB.put(it)); renderBank();
+    toast(dlg.isNew ? `« ${it.name} » ajouté à la banque.` : 'Commentaire modifié.');
+  }
+});
+$('#bankDlg').addEventListener('close', () => { stopRecording(true); stopPlayback(); dlg = null; });
+$('#bankNewAudio').addEventListener('click', () => openBankDialog({id: uid(), name: '', text: '', audio: null, dur: 0}, true, true));
+$('#bankNewText').addEventListener('click', () => openBankDialog({id: uid(), name: '', text: '', audio: null, dur: 0}, true));
+
+$('#bankExport').addEventListener('click', () => {
+  if (!bank.length && !criteria.length){ toast('La banque est vide.'); return; }
+  saveFile(bankJson(), 'banque-commentaires.json', 'application/json');
+});
+// Ajoute des commentaires venant d'un fichier (nouveau format avec critères, ou ancien format avec sections)
+async function importItems(data){
+  const map = Array.isArray(data.criteria) ? mergeCriteria(data.criteria) : null;
+  if (!map) (data.sectionOrder || []).forEach(critByName);
+  let o = nextOrder(), n = 0;
+  for (const raw of [...data.items].sort(byOrder)){
+    if (!raw || !raw.id || bank.some(b => b.id === raw.id)) continue;
+    const it = {...raw, order: o++};
+    it.crit = map ? (map[raw.crit] || 'none') : critByName(raw.section);
+    delete it.section;
+    bank.push(it); await safe(DB.put(it)); n++;
+  }
+  renderCritUI(); return n;
+}
+$('#bankImport').addEventListener('click', () => $('#fileBank').click());
+$('#fileBank').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!Array.isArray(data.items)){ if (Array.isArray(data.criteria)) data.items = []; else throw 0; }   // une ancienne « grille » s'importe aussi
+    const before = criteria.length, n = await importItems(data), nc = criteria.length - before;
+    const parts = [];
+    if (n || !nc) parts.push(`${n} commentaire${n > 1 ? 's' : ''} importé${n > 1 ? 's' : ''}`);
+    if (nc) parts.push(`${nc} critère${nc > 1 ? 's' : ''} ajouté${nc > 1 ? 's' : ''}`);
+    toast(parts.join(', ') + '.');
+  } catch (err){ console.warn(err); toast('Ce fichier n\'est pas une banque de commentaires.', 'err'); }
+});
+// Première utilisation : proposer de reprendre la banque du Correcteur audio (même navigateur)
+async function offerOldBank(){
+  if (bank.length || criteria.length || (await safe(DB.get('migrOffered')))) return;
+  if (!indexedDB.databases) return;
+  try {
+    const dbs = await indexedDB.databases();
+    if (!dbs.some(d => d.name === 'correcteur-audio')) return;
+    const old = await new Promise((res, rej) => { const r = indexedDB.open('correcteur-audio'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    if (!old.objectStoreNames.contains('bank')){ old.close(); return; }
+    const get = (store, fn) => new Promise(res => { const t = old.transaction(store, 'readonly'); const q = fn(t.objectStore(store)); q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
+    const items = await get('bank', s => s.getAll());
+    const sectionOrder = old.objectStoreNames.contains('kv') ? await get('kv', s => s.get('sectionOrder')) : null;
+    old.close();
+    if (!items || !items.length) return;
+    const box = $('#migr'); box.hidden = false;
+    box.innerHTML = `Votre banque du <b>Correcteur audio</b> contient ${items.length} commentaire${items.length > 1 ? 's' : ''}. L'importer ici ? Ses sections deviendront des critères.<div class="row"><button class="primary" id="migrYes">Importer</button><button id="migrNo">Non merci</button></div>`;
+    $('#migrYes').addEventListener('click', async () => { const n = await importItems({items, sectionOrder: sectionOrder || []}); box.hidden = true; safe(DB.set('migrOffered', true)); toast(`${n} commentaires importés. Vérifiez les couleurs de vos critères.`); });
+    $('#migrNo').addEventListener('click', () => { box.hidden = true; safe(DB.set('migrOffered', true)); });
+  } catch (e){ console.warn(e); }
+}
+
+/* ---------- onglets : plusieurs rapports ouverts ---------- */
+function addDoc(d){ d.id = d.id || uid(); docs.push(d); saveDocNow(d); saveTabs(); return d; }
+const anchorY = () => $('#topbar').offsetHeight + 24;
+// Position de lecture : page + fraction de la page sous le haut de l'écran
+function currentPos(){
+  const pages = [...pagesEl.querySelectorAll('.page')], a = anchorY();
+  if (!pages.length || pages[0].getBoundingClientRect().top > a) return {above: true, y: scrollY};
+  for (let i = 0; i < pages.length; i++){
+    const r = pages[i].getBoundingClientRect();
+    if (r.bottom > a || i === pages.length - 1) return {page: i, frac: clamp((a - r.top) / r.height, 0, 1)};
+  }
+}
+function restorePos(pos){
+  if (!pos){ scrollTo(0, 0); return; }
+  if (pos.above){ scrollTo(0, pos.y); return; }
+  const pages = pagesEl.querySelectorAll('.page'); if (!pages.length) return;
+  const r = pages[Math.min(pos.page, pages.length - 1)].getBoundingClientRect();
+  scrollTo(0, scrollY + r.top + pos.frac * r.height - anchorY());
+}
+function canSwitch(){ if (rec || busyAudio){ toast('Attendez la fin de l\'enregistrement.'); return false; } return true; }
+function switchTo(id, opts = {}){
+  const d = docs.find(x => x.id === id); if (!d || d === doc) return;
+  if (!canSwitch()) return;
+  closePop();
+  let pos = null;
+  if (doc){ pos = currentPos(); doc.pos = pos; if (saveTimers.has(doc.id)) saveDocNow(doc); }
+  setDoc(d);
+  restorePos(opts.top ? null : d.pos);
+  saveTabs();
+}
+function step(k){
+  if (!doc || docs.length < 2) return;
+  const i = docs.indexOf(doc), j = (i + k + docs.length) % docs.length;
+  switchTo(docs[j].id);
+  if (k > 0 && j === 0) toast('Retour au premier rapport.');
+  else if (k < 0 && j === docs.length - 1) toast('Dernier rapport.');
+}
+function renderTabs(){
+  const bar = $('#tabs'); bar.hidden = !docs.length;
+  if (!docs.length) return;
+  $('#tabCount').textContent = doc ? `${docs.indexOf(doc) + 1} / ${docs.length}` : docs.length;
+  $('#btnExportAll').innerHTML = `📦<span class="tl"> Exporter tout</span> (${docs.length})`;
+  $('#tabList').innerHTML = docs.map(d => {
+    const st = d.dirty ? 'dirty' : d.exported ? 'done' : '';
+    const tip = d.name + (d.dirty ? ' — modifications non exportées' : d.exported ? ' — exporté' : '');
+    return `<div class="tab${d === doc ? ' on' : ''}" role="tab" tabindex="0" aria-selected="${d === doc}" data-id="${d.id}" title="${esc(tip)}"><span class="st ${st}"></span><span class="tn">${esc(d.name)}</span><button class="tx" data-close="${d.id}" title="Fermer ce rapport" aria-label="Fermer ${esc(d.name)}">×</button></div>`;
+  }).join('');
+  const on = $('#tabList .tab.on');
+  if (on){ const l = $('#tabList'), r = on.offsetLeft - l.offsetLeft; if (r < l.scrollLeft || r + on.offsetWidth > l.scrollLeft + l.clientWidth) l.scrollLeft = r - 40; }
+}
+$('#tabList').addEventListener('click', e => {
+  const x = e.target.closest('[data-close]'); if (x){ e.stopPropagation(); closeDoc(x.dataset.close); return; }
+  const t = e.target.closest('.tab'); if (t) switchTo(t.dataset.id);
+});
+$('#tabList').addEventListener('keydown', e => { const t = e.target.closest('.tab'); if (t && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); switchTo(t.dataset.id); } });
+$('#tabPrev').addEventListener('click', () => step(-1));
+$('#tabNext').addEventListener('click', () => step(1));
+function showEmpty(){
+  closePop(); doc = null; selectedId = null; inkUndo = [];
+  pagesEl.innerHTML = ''; $('#empty').hidden = false; $('#general').hidden = true; $('#evalCard').hidden = true;
+  $('#docName').textContent = ''; $('#btnExport').disabled = true;
+  renderTabs(); updateStatus(); scrollTo(0, 0);
+}
+function closeDoc(id, silent){
+  const d = docs.find(x => x.id === id); if (!d) return;
+  if (d === doc && !canSwitch()) return;
+  if (!silent && d.dirty && !confirm(`« ${d.name} » a des modifications non exportées.\nFermer quand même ? Elles seront perdues.`)) return;
+  if (d === doc) closePop(true);
+  clearTimeout(saveTimers.get(id)); saveTimers.delete(id); undoStacks.delete(id);
+  const i = docs.indexOf(d); docs.splice(i, 1); safe(DB.delk('doc:' + id));
+  if (d === doc){
+    doc = null;
+    if (docs.length) switchTo(docs[Math.min(i, docs.length - 1)].id, {own: true}); else showEmpty();
+  }
+  saveTabs(); renderTabs();
+}
+$('#btnCloseAll').addEventListener('click', () => {
+  if (!canSwitch()) return;
+  const n = docs.filter(d => d.dirty).length;
+  if (!confirm(n ? `${n} rapport${n > 1 ? 's ont' : ' a'} des modifications non exportées, qui seront perdues.\nFermer tous les rapports quand même ?` : 'Fermer tous les rapports ?')) return;
+  [...docs].forEach(d => closeDoc(d.id, true));
+});
+
+/* ---------- ouverture des fichiers ---------- */
+// Moteur PDF : dans un « worker » quand l'outil est en ligne ; ouvert directement depuis le disque (file://),
+// les navigateurs refusent les workers, donc on charge le moteur dans la page.
+let pdfWorkerReady = null;
+function ensurePdfWorker(){
+  if (location.protocol !== 'file:'){ pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js'; return Promise.resolve(); }
+  return pdfWorkerReady || (pdfWorkerReady = new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = 'lib/pdf.worker.min.js'; sc.onload = res; sc.onerror = rej; document.head.append(sc);
+  }));
+}
+async function pdfToDoc(file, tag){
+  await ensurePdfWorker();
+  progress(tag + 'ouverture du PDF…');
+  const pdf = await pdfjsLib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+  try {
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++){
+      progress(`${tag}conversion de la page ${i} sur ${pdf.numPages}…`);
+      const page = await pdf.getPage(i);
+      const vp = page.getViewport({scale: Math.min(3, TARGET_W / page.getViewport({scale: 1}).width)});
+      const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+      const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+      await page.render({canvasContext: ctx, viewport: vp}).promise;
+      pages.push({src: cv.toDataURL('image/jpeg', 0.82), w: cv.width, h: cv.height});
+      page.cleanup();
+    }
+    return {id: uid(), name: file.name.replace(/\.pdf$/i, ''), pages, comments: [], ink: [], grades: {}, final: '', general: {text: '', audio: null, dur: 0}, dirty: false};
+  } finally { pdf.destroy(); }
+}
+async function correctionToDoc(file, tag){
+  progress(tag + 'lecture de la correction…');
+  const d = new DOMParser().parseFromString(await file.text(), 'text/html');
+  const metaEl = d.getElementById('correction-data'); if (!metaEl) throw new Error('pas de données');
+  const meta = JSON.parse(metaEl.textContent);
+  const pages = meta.pages.map((p, i) => ({src: d.querySelector(`#p${i + 1} img`).getAttribute('src'), w: p.w, h: p.h}));
+  const cmap = mergeCriteria(meta.criteria || []);
+  const comments = meta.comments.map(c => ({id: c.id || uid(), page: c.page, x: c.x, y: c.y, type: c.type, text: c.text || '', dur: c.dur || 0, crit: cmap[c.crit] || 'none', ...(isHex(c.col) ? {color: c.col} : {}),
+    audio: c.type === 'audio' ? (d.querySelector(`audio[data-n="${c.n}"]`) || {getAttribute: () => null}).getAttribute('src') : null}))
+    .filter(c => c.type === 'text' || c.audio);
+  const ga = d.getElementById('ag');
+  const ink = (meta.ink || []).map(st => ({id: uid(), page: st.p, c: st.c, w: st.w, o: st.o ?? 1, pts: st.pts}));
+  const grades = {}; Object.entries(meta.grades || {}).forEach(([k, v]) => { if (cmap[k]) grades[cmap[k]] = v; });
+  return {id: uid(), name: meta.name, pages, comments, ink, grades, final: meta.final || '', dirty: false, exported: true,
+    general: {text: meta.general.text || '', audio: ga ? ga.getAttribute('src') : null, dur: meta.general.dur || 0}};
+}
+// Contenu d'un .zip → liste de fichiers (on ignore les dossiers et les fichiers cachés)
+async function unzip(file){
+  if (!window.JSZip) throw new Error('JSZip absent');
+  const z = await JSZip.loadAsync(file), out = [];
+  for (const e of Object.values(z.files)){
+    const name = e.name.split('/').pop();
+    if (e.dir || !name || name.startsWith('.') || e.name.startsWith('__MACOSX')) continue;
+    out.push(new File([await e.async('blob')], name));
+  }
+  return out;
+}
+async function openFiles(list){
+  const isPdf = f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf', isHtml = f => /\.html?$/i.test(f.name);
+  const isZip = f => /\.zip$/i.test(f.name), isJson = f => /\.json$/i.test(f.name);
+  let files = [];
+  for (const f of list){
+    if (!isZip(f)){ files.push(f); continue; }
+    try { progress('Ouverture du zip…'); files.push(...await unzip(f)); }
+    catch (e){ console.error(e); toast(window.JSZip ? `« ${f.name} » n'est pas un zip lisible.` : 'Le lecteur de zip n\'a pas pu se charger : vérifiez que le dossier « lib » est à côté de l\'outil.', 'err'); }
+    finally { progress(null); }
+  }
+  files.sort((a, b) => cmp(a.name, b.name));
+  // Banques d'abord : les critères existent avant de rouvrir les corrections
+  let nb = 0, nc = 0;
+  for (const f of files.filter(isJson)){
+    try {
+      const data = JSON.parse(await f.text()); if (!Array.isArray(data.items) && !Array.isArray(data.criteria)) continue;
+      data.items = data.items || []; const before = criteria.length;
+      nb += await importItems(data); nc += criteria.length - before;
+    } catch (e){ console.warn(e); }
+  }
+  const bankMsg = (nb || nc) ? `Banque : ${nb} commentaire${nb > 1 ? 's' : ''}` + (nc ? `, ${nc} critère${nc > 1 ? 's' : ''}` : '') + ' ajouté' + (nb + nc > 1 ? 's' : '') + '.' : '';
+  const todo = files.filter(f => isPdf(f) || isHtml(f));
+  if (!todo.length){
+    if (files.some(isJson)) toast(bankMsg || 'Cette banque est déjà chargée.');
+    else toast('Choisissez des PDF, un .zip « Exporter tout » ou des corrections .html.', 'err');
+    return;
+  }
+  if (bankMsg) setTimeout(() => toast(bankMsg), 3200);
+  if (todo.some(isPdf) && !window.pdfjsLib){ toast('Le lecteur PDF n\'a pas pu se charger : vérifiez que le dossier « lib » est à côté de l\'outil.', 'err'); return; }
+  if (!canSwitch()) return;
+  const built = [], added = [], failed = [];
+  for (let k = 0; k < todo.length; k++){
+    const f = todo[k], tag = todo.length > 1 ? `Rapport ${k + 1} sur ${todo.length} : ` : '';
+    try { built.push(isPdf(f) ? await pdfToDoc(f, tag) : await correctionToDoc(f, tag)); }
+    catch (e){ console.error(e); failed.push(f.name); }
+  }
+  progress(null);
+  // Un rapport du même nom est déjà ouvert : le remplacer, ou ne pas le rouvrir
+  const dup = built.filter(d => docs.some(x => x.name === d.name));
+  let replace = false;
+  if (dup.length){
+    const pl = dup.length > 1, lost = dup.some(d => docs.find(x => x.name === d.name).dirty);
+    replace = confirm((pl ? `${dup.length} rapports sont déjà ouverts : ${dup.map(d => d.name).join(', ')}.` : `« ${dup[0].name} » est déjà ouvert.`) +
+      `\n\nOK : remplacer ${pl ? 'ces onglets' : 'cet onglet'} par ${pl ? 'les fichiers choisis' : 'le fichier choisi'}` + (lost ? ' (les modifications non exportées seront perdues).' : '.') +
+      `\nAnnuler : garder ${pl ? 'les onglets actuels' : "l'onglet actuel"}.`);
+  }
+  for (const d of built){
+    const old = docs.find(x => x.name === d.name);
+    if (!old){ added.push(addDoc(d)); continue; }
+    if (!replace) continue;
+    if (old === doc){ closePop(true); doc = null; }
+    clearTimeout(saveTimers.get(old.id)); saveTimers.delete(old.id); undoStacks.delete(old.id); safe(DB.delk('doc:' + old.id));
+    docs[docs.indexOf(old)] = d; saveDocNow(d); saveTabs(); added.push(d);
+  }
+  if (!doc && !added.length && docs.length) switchTo(docs[0].id);
+  if (added.length){ renderCritUI(); switchTo(added[0].id, {top: true}); }
+  if (failed.length) toast(`Impossible d'ouvrir : ${failed.join(', ')}`, 'err');
+  else if (added.length > 1) toast(`${added.length} rapports ouverts. Passez de l'un à l'autre avec les onglets ${isTouch() ? 'ou ◀ ▶' : 'ou Maj + ← →'}.`);
+  else if (added.length && todo.some(isHtml)) toast('Correction rouverte : vous pouvez la modifier puis l\'exporter de nouveau.');
+}
+$('#btnOpen').addEventListener('click', () => $('#filePdf').click());
+$('#btnOpen2').addEventListener('click', () => $('#filePdf').click());
+$('#btnOpenCorr').addEventListener('click', () => $('#fileCorr').click());
+$('#filePdf').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) openFiles(fs); });
+$('#fileCorr').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) openFiles(fs); });
+addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragover'); });
+addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dragover'); });
+addEventListener('drop', e => {
+  e.preventDefault(); document.body.classList.remove('dragover');
+  if (e.dataTransfer.files.length) openFiles(e.dataTransfer.files);
+});
+
+/* ---------- export ---------- */
+function buildExport(d){
+  const ord = orderedComments(d.comments.filter(c => c.type === 'audio' ? c.audio : c.text.trim()));
+  const num = new Map(ord.map((c, i) => [c.id, i + 1]));
+  const r4 = v => Math.round(v * 10000) / 10000;
+  const grade = id => ((d.grades || {})[id] || '').trim();
+  const meta = {app: 'correcteur-criteres', v: 2, name: d.name,
+    criteria: criteria.map(c => ({id: c.id, name: c.name, color: c.color})),
+    grades: Object.fromEntries(criteria.filter(c => grade(c.id)).map(c => [c.id, grade(c.id)])), final: (d.final || '').trim(),
+    general: {text: d.general.text || '', dur: d.general.audio ? d.general.dur : 0},
+    pages: d.pages.map(p => ({w: p.w, h: p.h})),
+    comments: ord.map(c => ({id: c.id, n: num.get(c.id), page: c.page, x: r4(c.x), y: r4(c.y), type: c.type, crit: validCrit(c.crit), ...(isHex(c.color) ? {col: c.color} : {}), text: c.text, dur: c.type === 'audio' ? Math.round(c.dur * 10) / 10 : 0})),
+    ink: (d.ink || []).map(st => ({p: st.page, c: st.c, w: st.w, o: st.o, pts: st.pts}))};
+  const marker = c => {
+    const n = num.get(c.id);
+    const cr = critOf(validCrit(c.crit));
+    return `<a class="mk ${c.type}" id="m${n}" href="#c${n}" data-n="${n}" style="left:${r4(c.x) * 100}%;top:${r4(c.y) * 100}%;--mk:${colorOf(c)}" title="${esc(cr.name)}" aria-label="Commentaire ${n} (${c.type === 'audio' ? 'audio' : 'écrit'}, ${esc(cr.name)})"><span class="ic">${c.type === 'audio' ? ICON.play + ICON.pause : ICON.note}</span><span class="n">${n}</span></a>`;
+  };
+  const pagesHtml = d.pages.map((p, i) =>
+    `<section class="page" id="p${i + 1}"><img src="${p.src}" alt="Page ${i + 1}" width="${p.w}" height="${p.h}">${(d.ink || []).some(st => st.page === i) ? inkSvgFor(p.h / p.w, d.ink.filter(st => st.page === i)) : ''}${ord.filter(c => c.page === i).map(marker).join('')}</section>`).join('\n');
+  const dots = colorMode === 'crit' && criteria.length > 0;   // pastilles de couleur des critères affichées à l'étudiant ?
+  const itemHtml = c => {
+    const n = num.get(c.id);
+    return `<li class="ci ${c.type}" id="c${n}" style="--c:${colorOf(c)}"><div class="ci-head"><span class="ci-n">${n}</span><span>Page ${c.page + 1}</span><a class="back" href="#m${n}">Voir dans le rapport ↑</a></div>` +
+      (c.type === 'audio' ? `<audio controls preload="metadata" data-n="${n}" src="${c.audio}"></audio>` : '') +
+      (c.text.trim() ? `<p>${esc(c.text.trim())}</p>` : '') + '</li>';
+  };
+  // Liste finale regroupée par critère, avec la note de chacun
+  const listHtml = !criteria.length ? `<ol>${ord.map(itemHtml).join('\n')}</ol>` : allCrits().map(cr => {
+    const cs = ord.filter(c => validCrit(c.crit) === cr.id), gr = cr.id === 'none' ? '' : grade(cr.id);
+    if (!cs.length && (!gr || cr.id === 'none')) return '';
+    return `<div class="cgroup">${dots ? `<span class="cdot" style="background:${cr.color}"></span>` : ''}<h3>${esc(cr.name)}</h3>${gr ? `<span class="gr">${esc(gr)}</span>` : ''}</div>` +
+      (cs.length ? `<ol>${cs.map(itemHtml).join('\n')}</ol>` : '<p class="nocomm">Aucun commentaire pour ce critère.</p>');
+  }).join('\n');
+  const anyGrade = criteria.some(c => grade(c.id)) || (d.final || '').trim();
+  const gradesHtml = criteria.length && anyGrade ? `<div class="card"><h2>Résultats</h2><table class="grades">${criteria.map(c =>
+      `<tr><td class="cn">${dots ? `<span class="cdot" style="background:${c.color}"></span>` : ''}${esc(c.name)}</td><td class="g">${esc(grade(c.id) || '—')}</td></tr>`).join('')}${(d.final || '').trim() ? `<tr class="final"><td>Note finale</td><td class="g">${esc(d.final.trim())}</td></tr>` : ''}</table></div>` : '';
+  const g = d.general, hasG = g.audio || (g.text || '').trim();
+  const genHtml = hasG ? `<div class="card"><h2>Commentaire général</h2>${g.audio ? `<audio id="ag" controls preload="metadata" data-n="g" src="${g.audio}"></audio>` : ''}${(g.text || '').trim() ? `<p>${esc(g.text.trim())}</p>` : ''}</div>` : '';
+  const nA = ord.filter(c => c.type === 'audio').length, nT = ord.length - nA;
+  const json = JSON.stringify(meta).replace(/</g, '\\u003c');
+  return `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(d.name)} — commentaires</title>
+<style>${VIEW_CSS}${MARKER_CSS}</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>${esc(d.name)}</h1>
+<p class="how">Commentaires de votre enseignant${nA ? ` : touchez une pastille ronde pour écouter` : ''}${nT ? `${nA ? ',' : ' :'} une pastille carrée pour lire` : ''}.${dots ? ' La couleur indique le critère d\'évaluation.' : ''} Tous les commentaires sont regroupés à la fin${criteria.length ? ', par critère' : ''}.</p>
+</header>
+${gradesHtml}
+${genHtml}
+<main>
+${pagesHtml}
+</main>
+<section class="list"><h2>Tous les commentaires (${ord.length})</h2>
+${listHtml}
+</section>
+</div>
+<script type="application/json" id="correction-data">${json}<\/script>
+<script>(${studentViewer.toString()})();<\/script>
+</body>
+</html>`;
+}
+function download(blob, name){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+}
+// Téléphone/tablette : on propose « Partager ou enregistrer » (Fichiers, Drive, courriel…) ou « Télécharger ».
+function saveSheet(blob, name){
+  return new Promise(resolve => {
+    const dlg = $('#saveDlg'), file = new File([blob], name, {type: blob.type});
+    let canShare = false; try { canShare = !!(navigator.canShare && navigator.canShare({files: [file]})); } catch {}
+    $('#saveName').textContent = `${name} (${Math.max(1, Math.round(blob.size / 1024))} Ko)`;
+    $('#saveShare').hidden = !canShare;
+    $('#saveTip').textContent = canShare ? '« Partager » permet de l\'enregistrer dans Fichiers ou Drive, ou de l\'envoyer.' : 'Le fichier ira dans vos Téléchargements.';
+    let result = false;
+    $('#saveShare').onclick = async ev => {
+      ev.preventDefault();
+      try { await navigator.share({files: [file], title: name}); result = true; dlg.close(); }
+      catch (e){ if (e && e.name !== 'AbortError'){ download(blob, name); result = true; dlg.close(); } }
+    };
+    $('#saveDown').onclick = ev => { ev.preventDefault(); download(blob, name); result = true; dlg.close(); };
+    dlg.addEventListener('close', () => resolve(result), {once: true});
+    dlg.showModal();
+  });
+}
+async function saveFile(content, name, type){
+  const blob = content instanceof Blob ? content : new Blob([content], {type});
+  if (!window.showSaveFilePicker && isTouch()) return saveSheet(blob, name);
+  if (window.showSaveFilePicker){
+    try {
+      const ext = name.slice(name.lastIndexOf('.'));
+      const h = await showSaveFilePicker({suggestedName: name, types: [{description: ext === '.html' ? 'Page HTML' : ext === '.zip' ? 'Archive ZIP' : 'Fichier JSON', accept: {[type]: [ext]}}]});
+      const w = await h.createWritable(); await w.write(blob); await w.close(); return true;
+    } catch (e){ if (e && e.name === 'AbortError') return false; console.warn(e); }
+  }
+  download(blob, name);
+  return true;
+}
+function markExported(d){ d.dirty = false; d.exported = true; return saveDocNow(d); }
+$('#btnExport').addEventListener('click', async () => {
+  if (!doc || !canSwitch()) return;
+  closePop();
+  const d = doc;
+  const ok = await saveFile(buildExport(d), d.name + '_corrigé.html', 'text/html');
+  if (ok){ await markExported(d); renderTabs(); toast('Fichier exporté. Remettez-le à l\'étudiant tel quel.'); }
+});
+// Exporter tout : un fichier par rapport. Chrome/Edge : on choisit un dossier une fois. Firefox : téléchargements successifs.
+// Exporter tout : un seul .zip = la correction .html de chaque rapport + la banque (à recharger avec « Reprendre »)
+$('#btnExportAll').addEventListener('click', async () => {
+  if (!docs.length || !canSwitch()) return;
+  if (!window.JSZip){ toast('Le module zip n\'a pas pu se charger : vérifiez que le dossier « lib » est à côté de l\'outil. Utilisez « Exporter celui-ci » en attendant.', 'err'); return; }
+  closePop();
+  const used = new Set(['banque-commentaires.json']), zip = new JSZip();
+  let blob;
+  try {
+    docs.forEach((d, i) => {
+      progress(`Préparation ${i + 1} sur ${docs.length}…`);
+      const base = (d.name || 'rapport') + '_corrigé'; let n = base, k = 2;
+      while (used.has((n + '.html').toLowerCase())) n = `${base} (${k++})`;
+      used.add((n + '.html').toLowerCase());
+      zip.file(n + '.html', buildExport(d));
+    });
+    zip.file('banque-commentaires.json', bankJson());
+    blob = await zip.generateAsync({type: 'blob', compression: 'DEFLATE', compressionOptions: {level: 6}},
+      m => progress(`Compression… ${Math.round(m.percent)} %`));
+  } catch (e){ console.error(e); toast('La création du zip a échoué.', 'err'); return; }
+  finally { progress(null); }
+  const t = new Date(), stamp = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}_${String(t.getHours()).padStart(2, '0')}h${String(t.getMinutes()).padStart(2, '0')}`;
+  const ok = await saveFile(blob, `Corrections_${stamp}.zip`, 'application/zip');
+  if (!ok) return;
+  for (const d of docs) await markExported(d);
+  renderTabs();
+  toast(`Zip créé : ${docs.length} correction${docs.length > 1 ? 's' : ''} + la banque. Gardez-le : il permet de tout reprendre.`);
+});
+
+/* ---------- effacer les données de cet appareil (ordinateur partagé) ---------- */
+$('#btnWipe').addEventListener('click', async () => {
+  if (!canSwitch()) return;
+  const nd = docs.length, nb = bank.length, nc = criteria.length;
+  if (!confirm(`Effacer toutes les données de l'outil sur cet appareil ?\n\n• ${nd} rapport${nd > 1 ? 's' : ''} ouvert${nd > 1 ? 's' : ''}, avec leurs corrections\n• votre banque (${nb} commentaire${nb > 1 ? 's' : ''}) et vos ${nc} critère${nc > 1 ? 's' : ''}\n• vos réglages (micro, couleurs…)\n\nPour garder votre travail, faites d'abord « Exporter tout ». Cette action est définitive.`)) return;
+  wiping = true;
+  saveTimers.forEach(t => clearTimeout(t)); saveTimers.clear();
+  try { await DB.destroy(); } catch (e){ console.warn(e); }
+  location.reload();
+});
+
+/* ---------- clavier ---------- */
+addEventListener('keydown', e => {
+  if (rec){
+    if (e.code === 'Space' || e.key === 'Enter'){ e.preventDefault(); stopRecording(false); }
+    else if (e.key === 'Escape'){ e.preventDefault(); stopRecording(true); }
+    return;
+  }
+  if ($('#bankDlg').open || $('#micDlg').open || $('#critDlg').open) return;
+  const inField = /^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName);
+  if (e.key === 'Escape'){ if (inField) document.activeElement.blur(); closePop(); disarm(); select(null); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !inField && doc){ e.preventDefault(); undoInk(); return; }
+  if (e.shiftKey && !inField && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')){ e.preventDefault(); step(e.key === 'ArrowRight' ? 1 : -1); return; }
+  if (inField || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (/^[0-9]$/.test(e.key)){ const i = +e.key; if (i === 0) setActiveCrit('none'); else if (criteria[i - 1]) setActiveCrit(criteria[i - 1].id); return; }
+  if (k === 'a') setMode('audio'); else if (k === 't') setMode('text'); else if (k === 'v') setMode('select'); else if (k === 'd') setMode('ink');
+  else if (k === 'e' && mode === 'ink') setInkTool(inkPrefs.tool === 'eraser' ? 'pen' : 'eraser');
+  else if (k === 'h'){ if (mode !== 'ink') setMode('ink'); setInkTool(inkPrefs.tool === 'hl' ? 'pen' : 'hl'); }
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId){ e.preventDefault(); deleteComment(selectedId); }
+});
+addEventListener('beforeunload', e => {
+  if (wiping) return;
+  const pending = saveTimers.size > 0;
+  if (doc){ doc.pos = currentPos(); saveDocNow(doc); }
+  flushSaves();
+  if (pending || (!dbOk && docs.some(d => d.dirty))){ e.preventDefault(); e.returnValue = ''; }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && !wiping){ if (doc) doc.pos = currentPos(); flushSaves(); } });
+
+/* ---------- application hors ligne ---------- */
+function setupOffline(){
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const box = $('#installBox');
+  if (location.protocol.startsWith('http') && 'serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      const offer = w => { if (!w) return; $('#updateBar').hidden = false; $('#btnUpdate').onclick = () => { flushSaves(); w.postMessage('skipWaiting'); }; };
+      if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const w = reg.installing;
+        w && w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) offer(w); });
+      });
+      setInterval(() => reg.update().catch(() => {}), 3600 * 1000);
+    }).catch(e => console.warn('hors ligne indisponible', e));
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading){ reloading = true; location.reload(); } });
+  }
+  if (standalone || !location.protocol.startsWith('http')) return;
+  // Android / Chrome / Edge : bouton « Installer »
+  addEventListener('beforeinstallprompt', ev => {
+    ev.preventDefault();
+    box.hidden = false;
+    box.innerHTML = '<b>📲 Installer l\'outil</b> : il aura son icône et fonctionnera sans internet.<br><button class="primary" id="btnInstall">Installer</button>';
+    $('#btnInstall').onclick = async () => { ev.prompt(); try { await ev.userChoice; } catch {} box.hidden = true; };
+  });
+  // iPhone / iPad (Safari) : pas de bouton possible, on explique le geste
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (iOS){
+    box.hidden = false;
+    box.innerHTML = '<b>📲 Pour l\'utiliser sans internet</b> : touchez <b>Partager</b> (le carré avec une flèche ↑), puis <b>« Sur l\'écran d\'accueil »</b>. Ouvrez ensuite l\'outil depuis son icône.';
+  }
+}
+
+/* ---------- démarrage ---------- */
+(async () => {
+  updateStatus();
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  setupOffline();
+  micSettings = Object.assign(micSettings, (await safe(DB.get('mic'))) || {});
+  inkPrefs = Object.assign(inkPrefs, (await safe(DB.get('ink'))) || {}); setInkTool();
+  collapsed = new Set((await safe(DB.get('collapsed'))) || []);
+  criteria = (await safe(DB.get('criteria'))) || [];
+  activeCrit = (await safe(DB.get('activeCrit'))) || 'none';
+  const col = (await safe(DB.get('colors'))) || {};
+  colorMode = col.mode === 'uniform' ? 'uniform' : 'crit'; uniformColor = isHex(col.uniform) ? col.uniform : '#c2410c';
+  renderColorMode();
+  bank = (await safe(DB.all())) || [];
+  renderCritUI();
+  offerOldBank();
+  const tabs = await safe(DB.get('tabs'));
+  if (tabs && Array.isArray(tabs.ids)){
+    for (const id of tabs.ids){ const d = await safe(DB.get('doc:' + id)); if (d && d.pages && d.pages.length){ d.id = id; docs.push(d); } }
+  } else {
+    const s = await safe(DB.get('session'));        // ancienne sauvegarde (un seul rapport)
+    if (s && s.dirty && s.doc && s.doc.pages && s.doc.pages.length){ s.doc.dirty = true; addDoc(s.doc); }
+    safe(DB.delk('session'));
+  }
+  if (docs.length){
+    const cur = docs.find(d => d.id === (tabs && tabs.cur)) || docs[0];
+    setDoc(cur); restorePos(cur.pos);
+    const nd = docs.filter(d => d.dirty).length;
+    toast(`${docs.length} rapport${docs.length > 1 ? 's' : ''} rouvert${docs.length > 1 ? 's' : ''}${nd ? ` (${nd} non exporté${nd > 1 ? 's' : ''})` : ''}.`);
+  }
+  renderTabs();
+})();
+</script>
+</body>
+</html>
