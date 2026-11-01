@@ -34,6 +34,8 @@ button.ghost{background:transparent;border-color:transparent}
 /* barre du haut */
 .topbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:10px 16px 8px;background:var(--panel);border-bottom:1px solid var(--line)}
 .brand{font-weight:700;font-size:15px;margin-right:4px;display:flex;align-items:center;gap:7px}
+.newc{display:inline-flex;align-items:center;gap:7px}
+.newc-l{font-size:13px;font-weight:600;color:var(--muted)}
 .brand-t{display:flex;flex-direction:column;line-height:1.15}
 .credit{font-size:11px;font-weight:400;color:var(--muted)}
 .brand i{width:22px;height:22px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:#fff;font-style:normal}
@@ -71,7 +73,7 @@ body.m-ink .page .mk{cursor:pointer}
 .inkbar button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset}
 
 /* commentaire général */
-#general{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:6px}
+#general{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:22px}
 #general textarea{width:100%;min-height:58px;resize:vertical;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:8px}
 .gen-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 
@@ -302,8 +304,11 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
   .topbar > button,.tabs > button{padding:6px 9px}
   .seg button{padding:6px 10px}
   .spacer{display:none}
+  .brand{order:0} #btnOpen{order:1} #btnOpenCorr{order:2} #btnMic{order:3} #btnBank{order:4;margin-left:auto}
+  .newc{order:5} .critpick{order:6} .inkbar{order:7} .status{order:8} .tabs{order:9}
+  .newc{gap:5px} .newc-l{font-size:12px}
   .critpick{padding-left:8px}
-  .critpick select{max-width:118px}
+  .critpick select{max-width:96px}
   .status{display:none}
   .status.armed{display:block;font-size:12.5px;line-height:1.35}
   .inkbar{gap:4px}
@@ -330,17 +335,18 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
   </i><span class="brand-t"><span class="brand-n">Correcteur à critères</span><span class="credit">Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency</span></span></div>
   <button id="btnOpen" title="Ouvrir un ou plusieurs rapports PDF (chacun dans son onglet)" aria-label="Ouvrir des PDF">📄<span class="tl"> Ouvrir des PDF</span></button>
   <button id="btnOpenCorr" title="Reprendre là où vous étiez : un .zip « Exporter tout », ou des corrections .html déjà exportées" aria-label="Reprendre">↺<span class="tl"> Reprendre (zip ou .html)</span></button>
+  <div class="newc"><span class="newc-l">Commentaire</span>
   <div class="seg" role="group" aria-label="Outil">
     <button data-mode="audio" class="active" title="Audio (A)">🎤<span class="tl"> Audio</span><kbd>A</kbd></button>
     <button data-mode="text" title="Texte (T)">✏️<span class="tl"> Texte</span><kbd>T</kbd></button>
     <button data-mode="ink" title="Dessin (D)">🖊<span class="tl"> Dessin</span><kbd>D</kbd></button>
     <button data-mode="select" title="Déplacer (V)">✋<span class="tl"> Déplacer</span><kbd>V</kbd></button>
-  </div>
-  <label class="critpick" title="Critère donné aux nouveaux commentaires (touches 1 à 9 ; 0 = Non classé)"><span class="cdot" id="activeDot"></span><select id="activeCrit" aria-label="Critère actif"></select></label>
+  </div></div>
+  <label class="critpick" title="Catégorie des nouveaux commentaires (touches 1 à 9 ; 0 = Non classé)"><span class="cdot" id="activeDot"></span><select id="activeCrit" aria-label="Catégorie active"></select></label>
   <div class="spacer"></div>
   <span id="docName"></span>
   <button id="btnMic" title="Choisir et tester le micro" aria-label="Réglage du micro">🎙</button>
-  <button id="btnBank" title="Critères et banque de commentaires" aria-label="Critères et banque">⭐<span class="tl"> Banque</span></button>
+  <button id="btnBank" title="Banque de commentaires" aria-label="Banque de commentaires">Banque ⭐</button>
   <div class="inkbar" id="inkBar" hidden>
     <button class="sw" data-ink="#dc2626" title="Rouge"><i style="background:#dc2626"></i></button>
     <button class="sw" data-ink="#2563eb" title="Bleu"><i style="background:#2563eb"></i></button>
@@ -389,31 +395,30 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
       <ol class="howto">
         <li><b>🎤 Audio :</b> cliquez à l'endroit voulu dans le rapport, parlez, puis cliquez n'importe où (ou <b>Espace</b>) pour arrêter.</li>
         <li><b>✏️ Texte :</b> cliquez et tapez votre commentaire.</li>
-        <li><b>🎯 Critères :</b> créez votre grille à droite (nom + couleur). Choisissez le critère actif en haut (touches <b>1</b> à <b>9</b>) : les nouvelles pastilles prennent sa couleur.</li>
+        <li><b>🏷 Catégories :</b> classez vos commentaires (ex. : « Analyse », « Unités »). Choisissez la catégorie en haut (touches <b>1</b> à <b>9</b>) ou créez-en une avec « + Nouvelle catégorie… ».</li>
         <li><b>⭐ Banque :</b> enregistrez vos commentaires fréquents à droite, puis cliquez-en un et cliquez dans le rapport pour le placer.</li>
         <li><b>🗂 Onglets :</b> ouvrez tous les rapports d'un coup et passez de l'un à l'autre (<b>Maj + ← →</b>). Chaque rapport garde sa position : vous le retrouvez là où vous l'aviez laissé.</li>
         <li><b>Exporter :</b> un fichier .html par étudiant. Il s'ouvre dans n'importe quel navigateur, même sur un téléphone. Votre travail est sauvegardé automatiquement entre-temps.</li>
         <li><b>📦 Exporter tout :</b> un seul .zip avec toutes les corrections et votre banque. Glissez ce zip dans l'outil (ou <b>Reprendre</b>) pour retrouver votre session, sur cet ordinateur ou un autre.</li>
       </ol>
     </div>
-    <div id="evalCard" hidden></div>
+    <div id="pages"></div>
     <div id="general" hidden>
-      <div><b>Commentaire général</b> <span class="muted">— facultatif, affiché en haut du fichier de l'étudiant</span></div>
+      <div><b>Commentaire général</b> <span class="muted">— facultatif, à la fin de la correction ; l'étudiant le verra en haut de son fichier</span></div>
       <div class="gen-row" id="genAudio"></div>
       <textarea id="genText" placeholder="Commentaire général écrit (facultatif)…"></textarea>
     </div>
-    <div id="pages"></div>
   </section>
 
   <aside id="bank">
-    <div class="crit-head"><h2>🎯 Critères et banque</h2><button id="critNew" title="Ajouter un critère à la grille">+ Critère</button></div>
+    <div class="crit-head"><h2>⭐ Banque</h2><button id="critNew" title="Ajouter une catégorie pour classer vos commentaires">+ Catégorie</button></div>
     <div class="cmode">
       <div class="cmode-row"><span>🎨 Couleur des pastilles</span>
-        <div class="seg sm" role="group" aria-label="Couleur des pastilles"><button data-cm="crit">Par critère</button><button data-cm="uniform">Une seule</button></div></div>
+        <div class="seg sm" role="group" aria-label="Couleur des pastilles"><button data-cm="crit">Par catégorie</button><button data-cm="uniform">Une seule</button></div></div>
       <div class="swatches sm" id="uniformPick" hidden></div>
       <div class="cmode-note" id="cmodeNote"></div>
     </div>
-    <p class="hint">Chaque critère regroupe ses commentaires. Cliquez un commentaire, puis cliquez dans le rapport pour le placer. Glissez ⠿ pour réorganiser ou changer de critère.</p>
+    <p class="hint">Vos commentaires fréquents, classés par catégories. Cliquez un commentaire, puis cliquez dans le rapport pour le placer. Glissez ⠿ pour réorganiser ou changer de catégorie.</p>
     <div id="migr" class="migr" hidden></div>
     <div class="bank-actions">
       <button id="bankNewAudio">🎤 Nouveau audio</button>
@@ -423,7 +428,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
     <div class="bank-fold" id="bankFold" hidden><button id="foldAll">Tout replier</button><button id="unfoldAll">Tout déplier</button></div>
     <ul id="bankList"></ul>
     <div class="bank-io">
-      <button id="bankExport" title="Enregistrer vos critères et vos commentaires dans un fichier : copie de sécurité, autre ordinateur ou partage avec un collègue">Sauvegarder la banque</button>
+      <button id="bankExport" title="Enregistrer vos catégories et vos commentaires dans un fichier : copie de sécurité, autre ordinateur ou partage avec un collègue">Sauvegarder la banque</button>
       <button id="bankImport" title="Charger une banque sauvegardée (fusionne avec l'actuelle)">Importer une banque</button>
     </div>
     <button id="btnWipe" class="wipe" title="Pour un ordinateur partagé : efface rapports, banque et réglages de cet appareil">🧹 Effacer les données de cet appareil…</button>
@@ -444,7 +449,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
     <h3 id="dlgTitle">Commentaire de la banque</h3>
     <label for="dlgName">Nom <span>— pour vous seulement</span></label>
     <input id="dlgName" maxlength="80" placeholder="ex. : Incertitudes absentes">
-    <label for="dlgCrit">Critère</label>
+    <label for="dlgCrit">Catégorie</label>
     <select id="dlgCrit"></select>
     <label>Audio</label>
     <div class="row" id="dlgAudio"></div>
@@ -459,8 +464,8 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
 
 <dialog id="critDlg">
   <form method="dialog" id="critForm">
-    <h3 id="critTitle">Nouveau critère</h3>
-    <label for="critName">Nom du critère</label>
+    <h3 id="critTitle">Nouvelle catégorie</h3>
+    <label for="critName">Nom de la catégorie</label>
     <input id="critName" maxlength="60" placeholder="ex. : Analyse des données" autocomplete="off">
     <label>Couleur</label>
     <div class="swatches" id="critSwatches"></div>
@@ -950,7 +955,7 @@ function updateStatus(){
   if (!doc){ statusEl.innerHTML = 'Ouvrez le rapport PDF d\'un étudiant pour commencer.'; return; }
   if (armed){ const it = bank.find(b => b.id === armed); statusEl.innerHTML = `⭐ ${isTouch() ? 'Touchez' : 'Cliquez dans'} le rapport pour placer <b>« ${esc(it ? it.name : '')} »</b>${isTouch() ? '' : ' · Échap pour annuler'}`; return; }
   const cr = critOf(validCrit(activeCrit));
-  const critNote = (mode === 'audio' || mode === 'text') ? ` <span class="cdot" style="background:${cr.color};vertical-align:-1px;margin-left:6px"></span> Critère : <b>${esc(cr.name)}</b>` : '';
+  const critNote = (mode === 'audio' || mode === 'text') ? ` <span class="cdot" style="background:${cr.color};vertical-align:-1px;margin-left:6px"></span> Catégorie : <b>${esc(cr.name)}</b>` : '';
   statusEl.innerHTML = (isTouch() ? {
     audio: '🎤 Touchez l\'endroit voulu, <b>parlez</b>, puis touchez n\'importe où pour arrêter.',
     text: '✏️ Touchez l\'endroit voulu pour écrire un commentaire.',
@@ -1242,7 +1247,7 @@ function openPop(id){
     ? `<div class="row"><button data-act="play">▶ Écouter (${fmt(c.dur)})</button><button data-act="rerec">🎤 Réenregistrer</button></div>` : '';
   pop.innerHTML = `
     <div class="pop-head"><b>${c.type === 'audio' ? '🔊 Commentaire audio' : '✏️ Commentaire écrit'} n° ${n}</b><span class="muted">p. ${c.page + 1}</span><button class="ghost" data-act="close" title="Fermer (Échap)">✕</button></div>
-    <div class="row"><span class="cdot" id="popDot" style="background:${critOf(validCrit(c.crit)).color}"></span><select id="popCrit" aria-label="Critère">${critOptions(validCrit(c.crit))}</select></div>
+    <div class="row"><span class="cdot" id="popDot" style="background:${critOf(validCrit(c.crit)).color}"></span><select id="popCrit" aria-label="Catégorie">${critOptions(validCrit(c.crit))}</select></div>
     <div class="row colrow" id="popColors"></div>
     ${audioRow}
     <textarea placeholder="${c.type === 'audio' ? 'Texte facultatif, affiché avec l\'audio…' : 'Votre commentaire…'}">${esc(c.text)}</textarea>
@@ -1250,14 +1255,14 @@ function openPop(id){
   pop.hidden = false; positionPop();
   const renderPopColors = () => {
     const cur = isHex(c.color) ? c.color.toLowerCase() : '';
-    $('#popColors').innerHTML = `<span class="lbl">Couleur</span><button class="auto${cur ? '' : ' on'}" data-pc="" title="Couleur ${colorMode === 'uniform' ? 'unique' : 'du critère'}">Auto</button>` +
+    $('#popColors').innerHTML = `<span class="lbl">Couleur</span><button class="auto${cur ? '' : ' on'}" data-pc="" title="Couleur ${colorMode === 'uniform' ? 'unique' : 'de la catégorie'}">Auto</button>` +
       COLORS.map(x => `<button class="sw${x === cur ? ' on' : ''}" data-pc="${x}" style="background:${x}" aria-label="Couleur ${x}"></button>`).join('') +
       `<input type="color" data-pcc value="${cur || colorOf(c)}" title="Autre couleur">`;
   };
   renderPopColors();
   $('#popColors').addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if (!b) return; if (b.dataset.pc) c.color = b.dataset.pc; else delete c.color; changed(); renderMarkers(); renderPopColors(); });
   $('#popColors').addEventListener('input', e => { if (!e.target.matches('[data-pcc]')) return; c.color = e.target.value; changed(); renderMarkers(); $('#popColors').querySelectorAll('[data-pc]').forEach(b => b.classList.remove('on')); });
-  $('#popCrit').addEventListener('change', e => { c.crit = validCrit(e.target.value); $('#popDot').style.background = critOf(c.crit).color; changed(); renderMarkers(); });
+  $('#popCrit').addEventListener('change', e => { const id = pickCrit(e.target, c.crit); if (!id) return; c.crit = id; $('#popDot').style.background = critOf(c.crit).color; changed(); renderMarkers(); });
   const ta = pop.querySelector('textarea');
   ta.addEventListener('input', () => { c.text = ta.value; changed(); });
   if (c.type === 'text') setTimeout(() => ta.focus(), 0);
@@ -1332,8 +1337,8 @@ function renderColorMode(){
   pick.innerHTML = COLORS.map(c => `<button type="button" data-uc="${c}" style="background:${c}" class="${c === uniformColor ? 'on' : ''}" aria-label="Couleur ${c}"></button>`).join('') +
     `<input type="color" id="uniformCustom" value="${uniformColor}" title="Autre couleur">`;
   $('#cmodeNote').textContent = colorMode === 'uniform'
-    ? 'Toutes les pastilles ont la même couleur (sauf celles à qui vous donnez une couleur). Les critères servent à classer et à noter.'
-    : 'Chaque pastille prend la couleur de son critère. L\'étudiant voit la même chose.';
+    ? 'Toutes les pastilles ont la même couleur (sauf celles à qui vous donnez une couleur). Les catégories servent seulement à classer.'
+    : 'Chaque pastille prend la couleur de sa catégorie. L\'étudiant voit la même chose, avec la légende.';
 }
 document.querySelectorAll('[data-cm]').forEach(b => b.addEventListener('click', () => { colorMode = b.dataset.cm; saveColors(); renderColorMode(); renderBank(); if (doc) renderMarkers(); }));
 $('#uniformPick').addEventListener('click', e => { const b = e.target.closest('[data-uc]'); if (!b) return; uniformColor = b.dataset.uc; saveColors(); renderColorMode(); renderBank(); if (doc) renderMarkers(); });
@@ -1347,16 +1352,27 @@ const nextColor = () => PALETTE.find(p => !criteria.some(c => c.color.toLowerCas
 function saveCriteria(){ safe(DB.set('criteria', criteria)); }
 function critOptions(sel){
   return allCrits().map((c, i) => {
-    const key = c.id === 'none' ? '0' : (i < 9 ? String(i + 1) : '');
+    const key = isTouch() ? '' : c.id === 'none' ? '0' : (i < 9 ? String(i + 1) : '');   // raccourcis clavier : inutiles au doigt
     return `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${key ? key + ' · ' : ''}${esc(c.name)}</option>`;
-  }).join('');
+  }).join('') + '<option value="__new">+ Nouvelle catégorie…</option>';
+}
+// Choix dans un menu de catégories : « + Nouvelle catégorie… » demande un nom, la crée et la sélectionne.
+function pickCrit(select, current){
+  if (select.value !== '__new') return validCrit(select.value);
+  const name = (prompt('Nom de la nouvelle catégorie :') || '').trim();
+  if (!name){ select.value = validCrit(current); return null; }
+  const before = criteria.length, id = critByName(name);
+  if (criteria.length > before) toast(`Catégorie « ${critOf(id).name} » ajoutée.`);
+  renderCritUI(); if (doc) changed();
+  select.innerHTML = critOptions(id); select.value = id;
+  return id;
 }
 function setActiveCrit(id){
   activeCrit = validCrit(id);
   $('#activeCrit').value = activeCrit; $('#activeDot').style.background = critOf(activeCrit).color;
   safe(DB.set('activeCrit', activeCrit)); updateStatus();
 }
-$('#activeCrit').addEventListener('change', e => { setActiveCrit(e.target.value); e.target.blur(); });
+$('#activeCrit').addEventListener('change', e => { const id = pickCrit(e.target, activeCrit); if (id) setActiveCrit(id); e.target.blur(); });
 function renderCritUI(){
   activeCrit = validCrit(activeCrit);
   $('#activeCrit').innerHTML = critOptions(activeCrit); $('#activeDot').style.background = critOf(activeCrit).color;
@@ -1380,35 +1396,14 @@ function critByName(name){
   return c.id;
 }
 
-/* évaluation par critère (notes libres) */
-function renderEval(){
-  const box = $('#evalCard');
-  if (!doc){ box.hidden = true; return; }
-  box.hidden = false;
-  const head = `<div><b>Évaluation par critère</b> <span class="muted">— notes libres (ex. : B, 6/8), affichées à l'étudiant</span></div>`;
-  if (!criteria.length){ box.innerHTML = head + `<p class="muted" style="margin:8px 0 0">Créez vos critères avec <b>+ Critère</b> dans le panneau de droite.</p>`; return; }
-  box.innerHTML = head + `<div class="eval-grid">` + criteria.map(c =>
-    `<span class="cdot" style="background:${c.color}"></span><span>${esc(c.name)}</span><span class="ev-n" data-n="${c.id}"></span><input data-g="${c.id}" value="${esc(doc.grades[c.id] || '')}" placeholder="—" maxlength="24" aria-label="Note : ${esc(c.name)}">`).join('') +
-    `<hr><span></span><span class="final">Note finale</span><span></span><input data-g="__final" class="final" value="${esc(doc.final || '')}" placeholder="—" maxlength="24" aria-label="Note finale"></div>`;
-  box.querySelectorAll('input[data-g]').forEach(inp => inp.addEventListener('input', () => {
-    if (inp.dataset.g === '__final') doc.final = inp.value; else doc.grades[inp.dataset.g] = inp.value;
-    changed();
-  }));
-  updateEvalCounts();
-}
-function updateEvalCounts(){
-  if (!doc) return;
-  document.querySelectorAll('#evalCard .ev-n').forEach(el => {
-    const n = doc.comments.filter(c => validCrit(c.crit) === el.dataset.n).length;
-    el.textContent = n ? n + ' commentaire' + (n > 1 ? 's' : '') : 'aucun commentaire';
-  });
-}
+function renderEval(){}          // (notes par critère retirées)
+function updateEvalCounts(){}
 
 /* dialogue d'un critère */
 let critEdit = null;
 function openCritDialog(c){
   critEdit = c ? {...c} : {id: uid(), name: '', color: nextColor(), isNew: true};
-  $('#critTitle').textContent = critEdit.isNew ? 'Nouveau critère' : 'Modifier le critère';
+  $('#critTitle').textContent = critEdit.isNew ? 'Nouvelle catégorie' : 'Modifier la catégorie';
   $('#critName').value = critEdit.name; renderSwatches();
   $('#critDlg').showModal(); setTimeout(() => $('#critName').focus(), 0);
 }
@@ -1422,22 +1417,22 @@ function renderSwatches(){
 $('#critForm').addEventListener('submit', e => {
   if (!e.submitter || e.submitter.value !== 'ok') return;
   const name = $('#critName').value.trim();
-  if (!name){ e.preventDefault(); toast('Donnez un nom au critère.'); return; }
-  if (criteria.some(c => c.id !== critEdit.id && c.name.trim().toLowerCase() === name.toLowerCase())){ e.preventDefault(); toast('Ce critère existe déjà.'); return; }
+  if (!name){ e.preventDefault(); toast('Donnez un nom à la catégorie.'); return; }
+  if (criteria.some(c => c.id !== critEdit.id && c.name.trim().toLowerCase() === name.toLowerCase())){ e.preventDefault(); toast('Cette catégorie existe déjà.'); return; }
   const {isNew, ...c} = critEdit; c.name = name;
   const i = criteria.findIndex(x => x.id === c.id);
   if (i >= 0) criteria[i] = c; else criteria.push(c);
   saveCriteria(); renderCritUI(); if (doc) changed();
-  toast(isNew ? `Critère « ${name} » ajouté.` : 'Critère modifié.');
+  toast(isNew ? `Catégorie « ${name} » ajoutée.` : 'Catégorie modifiée.');
 });
 $('#critNew').addEventListener('click', () => openCritDialog(null));
 function deleteCrit(id){
   const c = critOf(id); if (c === NONE) return;
-  if (!confirm(`Supprimer le critère « ${c.name} » ?\nSes commentaires (banque et rapport ouvert) deviendront « Non classé ».`)) return;
+  if (!confirm(`Supprimer la catégorie « ${c.name} » ?\nSes commentaires (banque et rapport ouvert) deviendront « Non classé ».`)) return;
   criteria = criteria.filter(x => x.id !== id); saveCriteria();
   bank.forEach(it => { if (it.crit === id){ it.crit = 'none'; safe(DB.put(it)); } });
   if (doc){ doc.comments.forEach(cm => { if (cm.crit === id) cm.crit = 'none'; }); delete doc.grades[id]; changed(); }
-  renderCritUI(); toast(`Critère « ${c.name} » supprimé.`);
+  renderCritUI(); toast(`Catégorie « ${c.name} » supprimée.`);
 }
 
 /* panneau de la banque sur tablette et téléphone */
@@ -1462,7 +1457,7 @@ function bankItemHtml(it){
         <span class="bk-ic${it.audio ? '' : ' t'}" style="background:${col}">${it.audio ? ICON.play : ICON.note}</span>
         <span class="bk-name">${esc(it.name)}</span><span class="bk-sub">${esc(bankSub(it))}</span>
       </button>
-      <span class="bk-tools">${it.audio ? '<button data-act="play" title="Écouter">▶</button>' : ''}<button data-act="edit" title="Modifier (nom, critère, audio, texte)">✎</button><button data-act="del" title="Supprimer">🗑</button></span>
+      <span class="bk-tools">${it.audio ? '<button data-act="play" title="Écouter">▶</button>' : ''}<button data-act="edit" title="Modifier (nom, catégorie, audio, texte)">✎</button><button data-act="del" title="Supprimer">🗑</button></span>
     </li>`;
 }
 function renderBank(){
@@ -1471,7 +1466,7 @@ function renderBank(){
   const ul = $('#bankList');
   $('#bankFold').hidden = !criteria.length || !!q;
   $('#bank').classList.toggle('searching', !!q);
-  if (!bank.length && !criteria.length){ ul.innerHTML = '<li class="bank-empty">Commencez par créer vos critères avec <b>+ Critère</b> (ex. : « Analyse des données »). Ajoutez ensuite vos commentaires fréquents ici, ou cliquez ⭐ <b>Ajouter à la banque</b> sur une pastille placée.</li>'; return; }
+  if (!bank.length && !criteria.length){ ul.innerHTML = '<li class="bank-empty">Classez vos commentaires avec <b>+ Catégorie</b> (ex. : « Analyse des données »). Ajoutez ensuite vos commentaires fréquents ici, ou cliquez ⭐ <b>Ajouter à la banque</b> sur une pastille placée.</li>'; return; }
   if (q && !list.length){ ul.innerHTML = '<li class="bank-empty">Aucun résultat.</li>'; return; }
   const groups = new Map(allCrits().map(c => [c.id, []]));
   for (const it of list) groups.get(validCrit(it.crit)).push(it);
@@ -1480,7 +1475,7 @@ function renderBank(){
     if (q && !items.length) return '';
     const open = q || !collapsed.has(c.id) || items.some(it => it.id === armed);
     return `<li class="sec" data-crit="${c.id}"><details${open ? ' open' : ''}>
-      <summary>${isNone ? '' : '<span class="grip sec-grip" title="Glisser pour déplacer le critère">⠿</span>'}<span class="chev">▸</span><span class="cdot" style="background:${c.color}"></span><span class="sec-name${isNone ? ' none' : ''}">${esc(c.name)}</span><span class="sec-count">${items.length}</span>${isNone ? '' : '<button data-act="editcrit" title="Renommer / changer la couleur">✎</button><button data-act="delcrit" title="Supprimer le critère">🗑</button>'}</summary>
+      <summary>${isNone ? '' : '<span class="grip sec-grip" title="Glisser pour déplacer la catégorie">⠿</span>'}<span class="chev">▸</span><span class="cdot" style="background:${c.color}"></span><span class="sec-name${isNone ? ' none' : ''}">${esc(c.name)}</span><span class="sec-count">${items.length}</span>${isNone ? '' : '<button data-act="editcrit" title="Renommer / changer la couleur de la catégorie">✎</button><button data-act="delcrit" title="Supprimer la catégorie">🗑</button>'}</summary>
       <ul class="sec-items">${items.length ? items.map(bankItemHtml).join('') : '<li class="sec-empty">Aucun commentaire : glissez-en un ici ou créez-en un.</li>'}</ul></details></li>`;
   }).join('');
 }
@@ -1611,6 +1606,7 @@ function openBankDialog(item, isNew, autoRec){
   $('#dlgTitle').textContent = isNew ? 'Nouveau commentaire pour la banque' : 'Modifier le commentaire';
   $('#dlgName').value = item.name || ''; $('#dlgText').value = item.text || '';
   $('#dlgCrit').innerHTML = critOptions(validCrit(item.crit !== undefined ? item.crit : activeCrit));
+  $('#dlgCrit').onchange = e => pickCrit(e.target, item.crit !== undefined ? item.crit : activeCrit);
   renderDlgAudio(); $('#bankDlg').showModal();
   if (autoRec) dlgRecord(); else setTimeout(() => (item.name ? $('#dlgText') : $('#dlgName')).focus(), 0);
 }
@@ -1619,7 +1615,7 @@ $('#bankForm').addEventListener('submit', e => {
     const it = dlg.item; it.name = $('#dlgName').value.trim(); it.text = $('#dlgText').value;
     if (!it.audio && !it.text.trim()){ e.preventDefault(); toast('Ajoutez un audio ou un texte.'); return; }
     if (!it.name) it.name = (it.text.trim().split('\n')[0] || 'Commentaire audio').slice(0, 60);
-    const crit = validCrit($('#dlgCrit').value);
+    const crit = validCrit($('#dlgCrit').value === '__new' ? 'none' : $('#dlgCrit').value);
     if (dlg.isNew || typeof it.order !== 'number' || crit !== validCrit(it.crit)) it.order = nextOrder();   // à la fin de son critère
     it.crit = crit; delete it.section;
     collapsed.delete(crit); safe(DB.set('collapsed', [...collapsed]));
@@ -1659,7 +1655,7 @@ $('#fileBank').addEventListener('change', async e => {
     const before = criteria.length, n = await importItems(data), nc = criteria.length - before;
     const parts = [];
     if (n || !nc) parts.push(`${n} commentaire${n > 1 ? 's' : ''} importé${n > 1 ? 's' : ''}`);
-    if (nc) parts.push(`${nc} critère${nc > 1 ? 's' : ''} ajouté${nc > 1 ? 's' : ''}`);
+    if (nc) parts.push(`${nc} catégorie${nc > 1 ? 's' : ''} ajoutée${nc > 1 ? 's' : ''}`);
     toast(parts.join(', ') + '.');
   } catch (err){ console.warn(err); toast('Ce fichier n\'est pas une banque de commentaires.', 'err'); }
 });
@@ -1678,8 +1674,8 @@ async function offerOldBank(){
     old.close();
     if (!items || !items.length) return;
     const box = $('#migr'); box.hidden = false;
-    box.innerHTML = `Votre banque du <b>Correcteur audio</b> contient ${items.length} commentaire${items.length > 1 ? 's' : ''}. L'importer ici ? Ses sections deviendront des critères.<div class="row"><button class="primary" id="migrYes">Importer</button><button id="migrNo">Non merci</button></div>`;
-    $('#migrYes').addEventListener('click', async () => { const n = await importItems({items, sectionOrder: sectionOrder || []}); box.hidden = true; safe(DB.set('migrOffered', true)); toast(`${n} commentaires importés. Vérifiez les couleurs de vos critères.`); });
+    box.innerHTML = `Votre banque du <b>Correcteur audio</b> contient ${items.length} commentaire${items.length > 1 ? 's' : ''}. L'importer ici ? Ses sections deviendront des catégories.<div class="row"><button class="primary" id="migrYes">Importer</button><button id="migrNo">Non merci</button></div>`;
+    $('#migrYes').addEventListener('click', async () => { const n = await importItems({items, sectionOrder: sectionOrder || []}); box.hidden = true; safe(DB.set('migrOffered', true)); toast(`${n} commentaires importés. Vérifiez les couleurs de vos catégories.`); });
     $('#migrNo').addEventListener('click', () => { box.hidden = true; safe(DB.set('migrOffered', true)); });
   } catch (e){ console.warn(e); }
 }
@@ -1743,7 +1739,7 @@ $('#tabPrev').addEventListener('click', () => step(-1));
 $('#tabNext').addEventListener('click', () => step(1));
 function showEmpty(){
   closePop(); doc = null; selectedId = null; inkUndo = [];
-  pagesEl.innerHTML = ''; $('#empty').hidden = false; $('#general').hidden = true; $('#evalCard').hidden = true;
+  pagesEl.innerHTML = ''; $('#empty').hidden = false; $('#general').hidden = true;
   $('#docName').textContent = ''; $('#btnExport').disabled = true;
   renderTabs(); updateStatus(); scrollTo(0, 0);
 }
@@ -1843,7 +1839,7 @@ async function openFiles(list){
       nb += await importItems(data); nc += criteria.length - before;
     } catch (e){ console.warn(e); }
   }
-  const bankMsg = (nb || nc) ? `Banque : ${nb} commentaire${nb > 1 ? 's' : ''}` + (nc ? `, ${nc} critère${nc > 1 ? 's' : ''}` : '') + ' ajouté' + (nb + nc > 1 ? 's' : '') + '.' : '';
+  const bankMsg = (nb || nc) ? `Banque : ${nb} commentaire${nb > 1 ? 's' : ''}` + (nc ? `, ${nc} catégorie${nc > 1 ? 's' : ''}` : '') + ' ajouté' + (nb + nc > 1 ? 's' : '') + '.' : '';
   const todo = files.filter(f => isPdf(f) || isHtml(f));
   if (!todo.length){
     if (files.some(isJson)) toast(bankMsg || 'Cette banque est déjà chargée.');
@@ -1903,7 +1899,7 @@ function buildExport(d){
   const grade = id => ((d.grades || {})[id] || '').trim();
   const meta = {app: 'correcteur-criteres', v: 2, name: d.name,
     criteria: criteria.map(c => ({id: c.id, name: c.name, color: c.color})),
-    grades: Object.fromEntries(criteria.filter(c => grade(c.id)).map(c => [c.id, grade(c.id)])), final: (d.final || '').trim(),
+    grades: {}, final: '',
     general: {text: d.general.text || '', dur: d.general.audio ? d.general.dur : 0},
     pages: d.pages.map(p => ({w: p.w, h: p.h})),
     comments: ord.map(c => ({id: c.id, n: num.get(c.id), page: c.page, x: r4(c.x), y: r4(c.y), type: c.type, crit: validCrit(c.crit), ...(isHex(c.color) ? {col: c.color} : {}), text: c.text, dur: c.type === 'audio' ? Math.round(c.dur * 10) / 10 : 0})),
@@ -1915,23 +1911,20 @@ function buildExport(d){
   };
   const pagesHtml = d.pages.map((p, i) =>
     `<section class="page" id="p${i + 1}"><img src="${p.src}" alt="Page ${i + 1}" width="${p.w}" height="${p.h}">${(d.ink || []).some(st => st.page === i) ? inkSvgFor(p.h / p.w, d.ink.filter(st => st.page === i)) : ''}${ord.filter(c => c.page === i).map(marker).join('')}</section>`).join('\n');
-  const dots = colorMode === 'crit' && criteria.length > 0;   // pastilles de couleur des critères affichées à l'étudiant ?
+  const dots = colorMode === 'crit' && criteria.length > 0;   // couleurs des catégories affichées à l'étudiant ?
   const itemHtml = c => {
     const n = num.get(c.id);
     return `<li class="ci ${c.type}" id="c${n}" style="--c:${colorOf(c)}"><div class="ci-head"><span class="ci-n">${n}</span><span>Page ${c.page + 1}</span><a class="back" href="#m${n}">Voir dans le rapport ↑</a></div>` +
       (c.type === 'audio' ? `<audio controls preload="metadata" data-n="${n}" src="${c.audio}"></audio>` : '') +
       (c.text.trim() ? `<p>${esc(c.text.trim())}</p>` : '') + '</li>';
   };
-  // Liste finale regroupée par critère, avec la note de chacun
-  const listHtml = !criteria.length ? `<ol>${ord.map(itemHtml).join('\n')}</ol>` : allCrits().map(cr => {
-    const cs = ord.filter(c => validCrit(c.crit) === cr.id), gr = cr.id === 'none' ? '' : grade(cr.id);
-    if (!cs.length && (!gr || cr.id === 'none')) return '';
-    return `<div class="cgroup">${dots ? `<span class="cdot" style="background:${cr.color}"></span>` : ''}<h3>${esc(cr.name)}</h3>${gr ? `<span class="gr">${esc(gr)}</span>` : ''}</div>` +
-      (cs.length ? `<ol>${cs.map(itemHtml).join('\n')}</ol>` : '<p class="nocomm">Aucun commentaire pour ce critère.</p>');
+  // Liste finale : par catégorie quand les couleurs des catégories sont affichées (les titres servent de légende),
+  // sinon simplement dans l'ordre du rapport.
+  const listHtml = !dots ? `<ol>${ord.map(itemHtml).join('\n')}</ol>` : allCrits().map(cr => {
+    const cs = ord.filter(c => validCrit(c.crit) === cr.id);
+    if (!cs.length) return '';
+    return `<div class="cgroup"><span class="cdot" style="background:${cr.color}"></span><h3>${esc(cr.name)}</h3></div><ol>${cs.map(itemHtml).join('\n')}</ol>`;
   }).join('\n');
-  const anyGrade = criteria.some(c => grade(c.id)) || (d.final || '').trim();
-  const gradesHtml = criteria.length && anyGrade ? `<div class="card"><h2>Résultats</h2><table class="grades">${criteria.map(c =>
-      `<tr><td class="cn">${dots ? `<span class="cdot" style="background:${c.color}"></span>` : ''}${esc(c.name)}</td><td class="g">${esc(grade(c.id) || '—')}</td></tr>`).join('')}${(d.final || '').trim() ? `<tr class="final"><td>Note finale</td><td class="g">${esc(d.final.trim())}</td></tr>` : ''}</table></div>` : '';
   const g = d.general, hasG = g.audio || (g.text || '').trim();
   const genHtml = hasG ? `<div class="card"><h2>Commentaire général</h2>${g.audio ? `<audio id="ag" controls preload="metadata" data-n="g" src="${g.audio}"></audio>` : ''}${(g.text || '').trim() ? `<p>${esc(g.text.trim())}</p>` : ''}</div>` : '';
   const nA = ord.filter(c => c.type === 'audio').length, nT = ord.length - nA;
@@ -1948,9 +1941,8 @@ function buildExport(d){
 <div class="wrap">
 <header>
 <h1>${esc(d.name)}</h1>
-<p class="how">Commentaires de votre enseignant${nA ? ` : touchez une pastille ronde pour écouter` : ''}${nT ? `${nA ? ',' : ' :'} une pastille carrée pour lire` : ''}.${dots ? ' La couleur indique le critère d\'évaluation.' : ''} Tous les commentaires sont regroupés à la fin${criteria.length ? ', par critère' : ''}.</p>
+<p class="how">Commentaires de votre enseignant${nA ? ` : touchez une pastille ronde pour écouter` : ''}${nT ? `${nA ? ',' : ' :'} une pastille carrée pour lire` : ''}.${dots ? ' La couleur indique la catégorie du commentaire.' : ''} Tous les commentaires sont regroupés à la fin${dots ? ', par catégorie' : ''}.</p>
 </header>
-${gradesHtml}
 ${genHtml}
 <main>
 ${pagesHtml}
@@ -2041,7 +2033,7 @@ $('#btnExportAll').addEventListener('click', async () => {
 $('#btnWipe').addEventListener('click', async () => {
   if (!canSwitch()) return;
   const nd = docs.length, nb = bank.length, nc = criteria.length;
-  if (!confirm(`Effacer toutes les données de l'outil sur cet appareil ?\n\n• ${nd} rapport${nd > 1 ? 's' : ''} ouvert${nd > 1 ? 's' : ''}, avec leurs corrections\n• votre banque (${nb} commentaire${nb > 1 ? 's' : ''}) et vos ${nc} critère${nc > 1 ? 's' : ''}\n• vos réglages (micro, couleurs…)\n\nPour garder votre travail, faites d'abord « Exporter tout ». Cette action est définitive.`)) return;
+  if (!confirm(`Effacer toutes les données de l'outil sur cet appareil ?\n\n• ${nd} rapport${nd > 1 ? 's' : ''} ouvert${nd > 1 ? 's' : ''}, avec leurs corrections\n• votre banque (${nb} commentaire${nb > 1 ? 's' : ''}) et vos ${nc} catégorie${nc > 1 ? 's' : ''}\n• vos réglages (micro, couleurs…)\n\nPour garder votre travail, faites d'abord « Exporter tout ». Cette action est définitive.`)) return;
   wiping = true;
   saveTimers.forEach(t => clearTimeout(t)); saveTimers.clear();
   try { await DB.destroy(); } catch (e){ console.warn(e); }

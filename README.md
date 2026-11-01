@@ -2,13 +2,13 @@
 
 *Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency.*
 
-Outil de correction des rapports de laboratoire : commentaires **audio**, **écrits** et **dessinés** directement sur le PDF de l'étudiant, regroupés par **critères d'évaluation** avec une note par critère. L'étudiant reçoit un simple fichier `.html` qui s'ouvre dans n'importe quel navigateur, même sur un téléphone.
+Outil de correction des rapports de laboratoire : commentaires **audio**, **écrits** et **dessinés** directement sur le PDF de l'étudiant, avec une **banque de commentaires** classée par catégories. L'étudiant reçoit un simple fichier `.html` qui s'ouvre dans n'importe quel navigateur, même sur un téléphone.
 
 Fonctionne sur ordinateur, tablette et téléphone, et hors ligne une fois installé.
 
 ## Confidentialité
 
-Les rapports, l'audio, les commentaires et les notes **restent sur l'appareil de l'enseignant**. L'outil n'a aucun serveur et n'envoie rien :
+Les rapports, l'audio et les commentaires **restent sur l'appareil de l'enseignant**. L'outil n'a aucun serveur et n'envoie rien :
 
 - les PDF sont convertis, l'audio enregistré et encodé, et les fichiers exportés **dans le navigateur** ;
 - les bibliothèques (PDF.js, lamejs, JSZip) sont incluses dans `lib/` : aucun appel à d'autres sites ;
