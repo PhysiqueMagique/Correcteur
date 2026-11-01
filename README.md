@@ -1,5 +1,7 @@
 # Correcteur à critères
 
+*Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency.*
+
 Outil de correction des rapports de laboratoire : commentaires **audio**, **écrits** et **dessinés** directement sur le PDF de l'étudiant, regroupés par **critères d'évaluation** avec une note par critère. L'étudiant reçoit un simple fichier `.html` qui s'ouvre dans n'importe quel navigateur, même sur un téléphone.
 
 Fonctionne sur ordinateur, tablette et téléphone, et hors ligne une fois installé.

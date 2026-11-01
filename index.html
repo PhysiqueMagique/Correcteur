@@ -7,6 +7,7 @@
      Elle ne charge que ses propres fichiers. Les rapports, l'audio et les commentaires restent sur l'appareil. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self'; connect-src 'none'; worker-src 'self' blob:; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Correcteur à critères</title>
+<meta name="author" content="Jean-François Désilets et Sovannie Sir, Collège Montmorency">
 <meta name="description" content="Commentaires audio, écrits et dessinés sur les rapports PDF des étudiants. Tout reste sur l'appareil.">
 <meta name="theme-color" content="#c2410c">
 <link rel="manifest" href="manifest.webmanifest">
@@ -33,6 +34,8 @@ button.ghost{background:transparent;border-color:transparent}
 /* barre du haut */
 .topbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:10px 16px 8px;background:var(--panel);border-bottom:1px solid var(--line)}
 .brand{font-weight:700;font-size:15px;margin-right:4px;display:flex;align-items:center;gap:7px}
+.brand-t{display:flex;flex-direction:column;line-height:1.15}
+.credit{font-size:11px;font-weight:400;color:var(--muted)}
 .brand i{width:22px;height:22px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:#fff;font-style:normal}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
 .seg button{border:0;border-radius:0;padding:6px 12px}
@@ -262,6 +265,9 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
 #btnBank{display:none}
 .wipe{display:block;width:100%;margin-top:18px;background:transparent;border-color:transparent;color:var(--muted);font-size:12px}
 .wipe:hover{color:var(--danger);border-color:#f3c5c5}
+.credit-empty{display:none;font-size:12.5px;color:var(--muted);margin:10px 0 0}
+@media (max-width:1599px){ .credit{display:none} .credit-empty{display:block} }
+@media (max-width:640px){ .brand-t{display:none} }
 .about{font-size:11.5px;color:var(--muted);margin:8px 2px 0;line-height:1.4}
 .install{max-width:470px;margin:16px auto 0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px;text-align:left}
 .install[hidden]{display:none}
@@ -321,7 +327,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
 <header class="topbar" id="topbar">
   <div class="brand"><i>
     <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zm-7 9a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2a5 5 0 0 1-10 0z" fill="currentColor"/></svg>
-  </i>Correcteur à critères</div>
+  </i><span class="brand-t"><span class="brand-n">Correcteur à critères</span><span class="credit">Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency</span></span></div>
   <button id="btnOpen" title="Ouvrir un ou plusieurs rapports PDF (chacun dans son onglet)" aria-label="Ouvrir des PDF">📄<span class="tl"> Ouvrir des PDF</span></button>
   <button id="btnOpenCorr" title="Reprendre là où vous étiez : un .zip « Exporter tout », ou des corrections .html déjà exportées" aria-label="Reprendre">↺<span class="tl"> Reprendre (zip ou .html)</span></button>
   <div class="seg" role="group" aria-label="Outil">
@@ -375,6 +381,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
         <h1><span class="desk">Glissez les rapports PDF de vos étudiants ici</span><span class="touch">Ouvrez les rapports PDF de vos étudiants</span></h1>
         <div class="muted desk">ou</div>
         <button class="primary big" id="btnOpen2">Ouvrir des rapports (PDF)</button>
+        <div class="credit-empty">Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency</div>
         <div class="muted" style="margin-top:6px;font-size:13px">Un ou plusieurs à la fois : chaque rapport s'ouvre dans son onglet.</div>
         <div id="resume" hidden></div>
       </div>
@@ -420,7 +427,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
       <button id="bankImport" title="Charger une banque sauvegardée (fusionne avec l'actuelle)">Importer une banque</button>
     </div>
     <button id="btnWipe" class="wipe" title="Pour un ordinateur partagé : efface rapports, banque et réglages de cet appareil">🧹 Effacer les données de cet appareil…</button>
-    <p class="about">Version 2026-11-01 · Les rapports, l'audio et les commentaires restent sur cet appareil : l'outil n'envoie rien en ligne.</p>
+    <p class="about">Conçu par Jean-François Désilets et Sovannie Sir, Collège Montmorency.<br>Version 2026-11-01 · Les rapports, l'audio et les commentaires restent sur cet appareil : l'outil n'envoie rien en ligne.</p>
   </aside>
 </div>
 
