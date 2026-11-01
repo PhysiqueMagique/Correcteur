@@ -112,6 +112,10 @@ body.dragover .drop{border-color:var(--accent);background:#fff7ed}
 #bank .hint{font-size:12px;color:var(--muted);margin:0 0 10px}
 .bank-actions{display:flex;gap:6px;margin-bottom:8px}
 .bank-actions button{flex:1}
+.bank-actions.bottom{flex-wrap:wrap;margin:10px 0 0;padding-top:10px;border-top:1px dashed var(--line)}
+.bank-actions.bottom .ba-l{flex-basis:100%;font-size:12px;color:var(--muted)}
+.bk.fresh{animation:fresh 1.6s ease}
+@keyframes fresh{0%,40%{background:#fef3c7;border-color:#f59e0b}}
 #bankSearch{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;margin-bottom:8px}
 #bankList{list-style:none;margin:0;padding:0}
 .bk{display:flex;align-items:stretch;border:1px solid var(--line);background:#fff;border-radius:10px;margin-bottom:6px;overflow:hidden}
@@ -412,21 +416,15 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
 
   <aside id="bank">
     <div class="crit-head"><h2>⭐ Banque</h2><button id="critNew" title="Ajouter une catégorie pour classer vos commentaires">+ Catégorie</button></div>
-    <div class="cmode">
-      <div class="cmode-row"><span>🎨 Couleur des pastilles</span>
-        <div class="seg sm" role="group" aria-label="Couleur des pastilles"><button data-cm="crit">Par catégorie</button><button data-cm="uniform">Une seule</button></div></div>
-      <div class="swatches sm" id="uniformPick" hidden></div>
-      <div class="cmode-note" id="cmodeNote"></div>
-    </div>
-    <p class="hint">Vos commentaires fréquents, classés par catégories. Cliquez un commentaire, puis cliquez dans le rapport pour le placer. Glissez ⠿ pour réorganiser ou changer de catégorie.</p>
+    <p class="hint">Cliquez un commentaire, puis cliquez dans le rapport pour le placer. Glissez ⠿ pour réorganiser ou changer de catégorie ; ✎ pour renommer ou changer la couleur.</p>
     <div id="migr" class="migr" hidden></div>
-    <div class="bank-actions">
-      <button id="bankNewAudio">🎤 Nouveau audio</button>
-      <button id="bankNewText">✏️ Nouveau texte</button>
-    </div>
     <input id="bankSearch" type="search" placeholder="Rechercher dans la banque…">
     <div class="bank-fold" id="bankFold" hidden><button id="foldAll">Tout replier</button><button id="unfoldAll">Tout déplier</button></div>
     <ul id="bankList"></ul>
+    <div class="bank-actions bottom"><span class="ba-l">Nouveau commentaire dans la banque :</span>
+      <button id="bankNewAudio">🎤 Audio</button>
+      <button id="bankNewText">✏️ Texte</button>
+    </div>
     <div class="bank-io">
       <button id="bankExport" title="Enregistrer vos catégories et vos commentaires dans un fichier : copie de sécurité, autre ordinateur ou partage avec un collègue">Sauvegarder la banque</button>
       <button id="bankImport" title="Charger une banque sauvegardée (fusionne avec l'actuelle)">Importer une banque</button>
@@ -1237,6 +1235,23 @@ function deleteComment(id){
   closePop(true); changed(); renderMarkers();
 }
 
+/* Ajout direct à la banque depuis une pastille : même catégorie, nom tiré du texte (modifiable ensuite dans la banque) */
+const inBank = c => bank.find(b => (b.text || '').trim() === (c.text || '').trim() && (b.audio || null) === (c.audio || null) && validCrit(b.crit) === validCrit(c.crit));
+function addToBank(c){
+  const dup = inBank(c);
+  if (dup){ toast(`Déjà dans la banque : « ${dup.name} ».`); return true; }
+  let name = (c.text || '').trim().split('\n')[0].slice(0, 60);
+  if (!name){ let k = 1; while (bank.some(b => b.name === 'Commentaire audio ' + k)) k++; name = 'Commentaire audio ' + k; }
+  const it = {id: uid(), name, text: c.text || '', audio: c.audio || null, dur: c.dur || 0, crit: validCrit(c.crit), order: nextOrder(), created: Date.now()};
+  bank.push(it); safe(DB.put(it));
+  collapsed.delete(it.crit); safe(DB.set('collapsed', [...collapsed]));
+  renderBank();
+  const li = document.querySelector(`.bk[data-id="${it.id}"]`);
+  if (li){ li.classList.add('fresh'); if (!matchMedia('(max-width:900px)').matches) li.scrollIntoView({block: 'nearest', behavior: 'smooth'}); }
+  toast(`Ajouté à la banque, dans « ${critOf(it.crit).name} ».`);
+  return true;
+}
+
 /* ---------- bulle d'édition ---------- */
 let popId = null;
 function openPop(id){
@@ -1251,7 +1266,7 @@ function openPop(id){
     <div class="row colrow" id="popColors"></div>
     ${audioRow}
     <textarea placeholder="${c.type === 'audio' ? 'Texte facultatif, affiché avec l\'audio…' : 'Votre commentaire…'}">${esc(c.text)}</textarea>
-    <div class="row"><button data-act="bank">⭐ Ajouter à la banque</button><span class="spacer"></span><button data-act="del" class="danger">Supprimer</button>${c.type === 'text' ? '<button data-act="close" class="primary">OK</button>' : ''}</div>`;
+    <div class="row">${inBank(c) && (c.text.trim() || c.audio) ? '<button data-act="bank" disabled>✓ Dans la banque</button>' : '<button data-act="bank">⭐ Ajouter à la banque</button>'}<span class="spacer"></span><button data-act="del" class="danger">Supprimer</button>${c.type === 'text' ? '<button data-act="close" class="primary">OK</button>' : ''}</div>`;
   pop.hidden = false; positionPop();
   const renderPopColors = () => {
     const cur = isHex(c.color) ? c.color.toLowerCase() : '';
@@ -1273,7 +1288,7 @@ function openPop(id){
     else if (act === 'play') play('c' + c.id, c.audio, b);
     else if (act === 'bank'){
       if (c.type === 'text' && !c.text.trim()){ toast('Écrivez d\'abord le commentaire.'); return; }
-      openBankDialog({id: uid(), name: (c.text.trim().split('\n')[0] || 'Commentaire audio').slice(0, 60), text: c.text, audio: c.audio, dur: c.dur, crit: validCrit(c.crit)}, true);
+      if (addToBank(c)){ b.textContent = '✓ Dans la banque'; b.disabled = true; }
     }
     else if (act === 'rerec'){
       closePop(true);
@@ -1331,19 +1346,7 @@ let colorMode = 'crit', uniformColor = '#c2410c';
 // Couleur affichée d'un commentaire : sa couleur à lui, sinon la couleur unique, sinon celle de son critère
 const colorOf = c => isHex(c.color) ? c.color : colorMode === 'uniform' ? uniformColor : critOf(validCrit(c.crit)).color;
 function saveColors(){ safe(DB.set('colors', {mode: colorMode, uniform: uniformColor})); }
-function renderColorMode(){
-  document.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('active', b.dataset.cm === colorMode));
-  const pick = $('#uniformPick'); pick.hidden = colorMode !== 'uniform';
-  pick.innerHTML = COLORS.map(c => `<button type="button" data-uc="${c}" style="background:${c}" class="${c === uniformColor ? 'on' : ''}" aria-label="Couleur ${c}"></button>`).join('') +
-    `<input type="color" id="uniformCustom" value="${uniformColor}" title="Autre couleur">`;
-  $('#cmodeNote').textContent = colorMode === 'uniform'
-    ? 'Toutes les pastilles ont la même couleur (sauf celles à qui vous donnez une couleur). Les catégories servent seulement à classer.'
-    : 'Chaque pastille prend la couleur de sa catégorie. L\'étudiant voit la même chose, avec la légende.';
-}
-document.querySelectorAll('[data-cm]').forEach(b => b.addEventListener('click', () => { colorMode = b.dataset.cm; saveColors(); renderColorMode(); renderBank(); if (doc) renderMarkers(); }));
-$('#uniformPick').addEventListener('click', e => { const b = e.target.closest('[data-uc]'); if (!b) return; uniformColor = b.dataset.uc; saveColors(); renderColorMode(); renderBank(); if (doc) renderMarkers(); });
-$('#uniformPick').addEventListener('input', e => { if (e.target.id !== 'uniformCustom') return; uniformColor = e.target.value; saveColors(); pick_off(); renderBank(); if (doc) renderMarkers(); });
-function pick_off(){ document.querySelectorAll('#uniformPick [data-uc]').forEach(b => b.classList.toggle('on', b.dataset.uc === uniformColor)); }
+function renderColorMode(){}   // (choix « une seule couleur » retiré : chaque catégorie a sa couleur)
 let criteria = [], activeCrit = 'none';
 const critOf = id => criteria.find(c => c.id === id) || NONE;
 const validCrit = id => criteria.some(c => c.id === id) ? id : 'none';
@@ -2113,7 +2116,7 @@ function setupOffline(){
   criteria = (await safe(DB.get('criteria'))) || [];
   activeCrit = (await safe(DB.get('activeCrit'))) || 'none';
   const col = (await safe(DB.get('colors'))) || {};
-  colorMode = col.mode === 'uniform' ? 'uniform' : 'crit'; uniformColor = isHex(col.uniform) ? col.uniform : '#c2410c';
+  colorMode = 'crit';
   renderColorMode();
   bank = (await safe(DB.all())) || [];
   renderCritUI();
