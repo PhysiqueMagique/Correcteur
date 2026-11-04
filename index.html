@@ -54,7 +54,13 @@ kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;margin-lef
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;align-items:start}
 #viewer{padding:18px 26px 120px;min-height:calc(100vh - var(--topH))}
 #pages,#general{max-width:1000px;margin:0 auto}
-.plabel{max-width:1000px;margin:18px auto 6px;color:var(--muted);font-size:12px}
+.plabel{max-width:1000px;margin:18px auto 6px;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:10px}
+.plabel.g{color:var(--ink);font-weight:600;margin-top:28px}
+.plabel .gx{padding:2px 8px;font-size:12px;font-weight:400}
+#grilleDlg{border:1px solid var(--line);border-radius:14px;padding:18px;width:min(420px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#grilleDlg::backdrop{background:rgba(20,20,20,.35)}
+#grilleDlg h3{margin:0 0 6px;font-size:16px}
+#grilleDlg p{margin:0 0 14px}
 .page{position:relative;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15),0 8px 24px rgba(0,0,0,.08);user-select:none;-webkit-user-select:none}
 .page img{display:block;width:100%;height:auto;pointer-events:none}
 body.m-audio .page,body.m-text .page,body.armed .page{cursor:crosshair}
@@ -377,6 +383,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
     <div class="tablist" id="tabList" role="tablist" aria-label="Rapports ouverts"></div>
     <button id="tabNext" title="Rapport suivant (Maj + →)" aria-label="Rapport suivant">▶</button>
     <span class="tabcount" id="tabCount"></span>
+    <button id="btnGrille" title="Ajouter une grille de correction (PDF) à la fin du rapport" aria-label="Ajouter une grille">📋<span class="tl"> Grille</span></button>
     <button id="btnCloseAll" title="Fermer tous les rapports" aria-label="Tout fermer">✖<span class="tl"> Tout fermer</span></button>
     <button id="btnExport" disabled title="Exporter le rapport affiché : un fichier .html à remettre à l'étudiant" aria-label="Exporter celui-ci">⬇<span class="tl"> Exporter celui-ci</span></button>
     <button id="btnExportAll" class="primary" title="Un seul fichier .zip : la correction .html de chaque rapport + votre banque. Rechargez ce zip avec « Reprendre » pour continuer plus tard." aria-label="Exporter tout">📦<span class="tl"> Exporter tout</span></button>
@@ -401,6 +408,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
         <li><b>🏷 Catégories :</b> classez vos commentaires (ex. : « Analyse », « Unités »). Choisissez la catégorie en haut (touches <b>1</b> à <b>9</b>) ou créez-en une avec « + Nouvelle catégorie… ».</li>
         <li><b>⭐ Banque :</b> enregistrez vos commentaires fréquents à droite, puis cliquez-en un et cliquez dans le rapport pour le placer.</li>
         <li><b>🗂 Onglets :</b> ouvrez tous les rapports d'un coup et passez de l'un à l'autre (<b>Maj + ← →</b>). Chaque rapport garde sa position : vous le retrouvez là où vous l'aviez laissé.</li>
+        <li><b>📋 Grille :</b> ajoutez votre grille de correction (PDF) à la fin du rapport, ou de tous les rapports ouverts. Vous pouvez y écrire et y placer des commentaires.</li>
         <li><b>Exporter :</b> un fichier .html par étudiant. Il s'ouvre dans n'importe quel navigateur, même sur un téléphone. Votre travail est sauvegardé automatiquement entre-temps.</li>
         <li><b>📦 Exporter tout :</b> un seul .zip avec toutes les corrections et votre banque. Glissez ce zip dans l'outil (ou <b>Reprendre</b>) pour retrouver votre session, sur cet ordinateur ou un autre.</li>
       </ol>
@@ -501,9 +509,22 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
   </form>
 </dialog>
 
+<dialog id="grilleDlg">
+  <form method="dialog">
+    <h3>📋 Ajouter la grille de correction</h3>
+    <p id="grilleInfo" class="muted"></p>
+    <div class="save-acts">
+      <button value="one" id="grilleOne" class="primary">À ce rapport seulement</button>
+      <button value="all" id="grilleAll">À tous les rapports ouverts</button>
+      <button value="cancel">Annuler</button>
+    </div>
+  </form>
+</dialog>
+
 <div id="toast"></div>
 <div id="progress" hidden></div>
 <input type="file" id="filePdf" accept="application/pdf,.pdf" multiple hidden>
+<input type="file" id="fileGrilleCorr" accept="application/pdf,.pdf" hidden>
 <input type="file" id="fileCorr" accept=".zip,application/zip,.html,.htm,text/html,.json,application/json" multiple hidden>
 <input type="file" id="fileBank" accept=".json,application/json" hidden>
 
@@ -625,6 +646,7 @@ audio{width:100%;margin-top:6px;height:40px}
 .cgroup h3{margin:0;font-size:1.02rem;flex:1;overflow-wrap:anywhere}
 .cgroup .gr{font-weight:700;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:2px 10px;white-space:nowrap}
 .nocomm{color:var(--muted);font-size:.92rem;margin:0 0 8px}
+.gtitle{font-size:1.05rem;margin:26px 0 10px}
 .ci-head a.back{margin-left:auto;color:var(--muted)}
 .mk{scroll-margin-top:40vh}
 .mk.flash{animation:flash .7s 3}
@@ -984,7 +1006,12 @@ function setDoc(d){
 function renderDoc(){
   pagesEl.innerHTML = '';
   doc.pages.forEach((p, i) => {
-    const lab = document.createElement('div'); lab.className = 'plabel'; lab.textContent = `Page ${i + 1} / ${doc.pages.length}`;
+    const lab = document.createElement('div'); lab.className = 'plabel';
+    if (p.grille){
+      const g0 = doc.pages.findIndex(q => q.grille), ng = doc.pages.length - g0;
+      lab.classList.add('g');
+      lab.innerHTML = `<span>📋 Grille de correction${ng > 1 ? ` · page ${i - g0 + 1} / ${ng}` : ''}</span>` + (i === g0 ? '<button class="gx" data-gx title="Retirer la grille de ce rapport">Retirer</button>' : '');
+    } else lab.textContent = `Page ${i + 1} / ${doc.pages.filter(q => !q.grille).length}`;
     const div = document.createElement('div'); div.className = 'page'; div.dataset.page = i; div.style.aspectRatio = p.w + ' / ' + p.h;
     const img = new Image(); img.src = p.src; img.alt = ''; img.draggable = false; div.append(img);
     div.insertAdjacentHTML('beforeend', inkSvg(i, doc.ink.filter(st => st.page === i)));
@@ -1765,6 +1792,57 @@ $('#btnCloseAll').addEventListener('click', () => {
   [...docs].forEach(d => closeDoc(d.id, true));
 });
 
+/* ---------- grille de correction (PDF ajouté à la fin du rapport) ---------- */
+let pendingGrille = null;
+// Retire les pages de grille d'un rapport (et ce qui y était annoté). Renvoie false si l'enseignant annule.
+function dropGrille(d, ask){
+  const g0 = d.pages.findIndex(q => q.grille); if (g0 < 0) return true;
+  const notes = d.comments.filter(c => c.page >= g0).length + d.ink.filter(st => st.page >= g0).length;
+  if (ask && notes && !confirm(`La grille de « ${d.name} » contient ${notes} annotation${notes > 1 ? 's' : ''}, qui ser${notes > 1 ? 'ont' : 'a'} perdue${notes > 1 ? 's' : ''}. Continuer ?`)) return false;
+  d.pages = d.pages.slice(0, g0);
+  d.comments = d.comments.filter(c => c.page < g0); d.ink = d.ink.filter(st => st.page < g0);
+  return true;
+}
+function applyGrille(targets, g){
+  // une seule question pour les grilles déjà annotées
+  const annotated = targets.filter(d => { const g0 = d.pages.findIndex(q => q.grille); return g0 >= 0 && (d.comments.some(c => c.page >= g0) || d.ink.some(st => st.page >= g0)); });
+  if (annotated.length && !confirm(`${annotated.length === 1 ? `La grille de « ${annotated[0].name} » est déjà annotée` : `${annotated.length} rapports ont déjà une grille annotée`}. La remplacer effacera ces annotations. Continuer ?`)) return;
+  for (const d of targets){
+    dropGrille(d, false);
+    d.pages = d.pages.concat(g.pages.map(q => ({...q, grille: true})));
+    d.dirty = true;
+    if (d === doc){ const pos = currentPos(); renderDoc(); restorePos(pos); }
+    saveDocNow(d);
+  }
+  renderTabs();
+  toast(targets.length > 1 ? `Grille ajoutée à la fin des ${targets.length} rapports.` : `Grille ajoutée à la fin de « ${targets[0].name} ».`);
+}
+$('#btnGrille').addEventListener('click', () => { if (doc && canSwitch()) $('#fileGrilleCorr').click(); });
+$('#fileGrilleCorr').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f || !doc) return;
+  if (!window.pdfjsLib){ toast('Le lecteur PDF n\'a pas pu se charger.', 'err'); return; }
+  let g;
+  try { g = await pdfToDoc(f, 'Grille : '); } catch (err){ console.error(err); toast('Impossible de lire ce PDF.', 'err'); return; }
+  finally { progress(null); }
+  if (docs.length < 2){ applyGrille([doc], g); return; }
+  pendingGrille = g;
+  $('#grilleInfo').textContent = `« ${g.name} » (${g.pages.length} page${g.pages.length > 1 ? 's' : ''}) sera placée à la fin du rapport.`;
+  $('#grilleAll').textContent = `À tous les rapports ouverts (${docs.length})`;
+  $('#grilleDlg').showModal();
+});
+$('#grilleDlg').addEventListener('close', () => {
+  const v = $('#grilleDlg').returnValue, g = pendingGrille; pendingGrille = null;
+  if (!g || !doc) return;
+  if (v === 'one') applyGrille([doc], g); else if (v === 'all') applyGrille([...docs], g);
+});
+pagesEl.addEventListener('click', e => {
+  if (!e.target.closest('[data-gx]') || !doc) return;
+  if (!dropGrille(doc, true)) return;
+  changed(); renderDoc(); toast('Grille retirée de ce rapport.');
+});
+// le bouton « Retirer » ne doit pas créer de commentaire
+pagesEl.addEventListener('pointerdown', e => { if (e.target.closest('[data-gx]')) e.stopPropagation(); }, true);
+
 /* ---------- ouverture des fichiers ---------- */
 // Moteur PDF : dans un « worker » quand l'outil est en ligne ; ouvert directement depuis le disque (file://),
 // les navigateurs refusent les workers, donc on charge le moteur dans la page.
@@ -1799,7 +1877,7 @@ async function correctionToDoc(file, tag){
   const d = new DOMParser().parseFromString(await file.text(), 'text/html');
   const metaEl = d.getElementById('correction-data'); if (!metaEl) throw new Error('pas de données');
   const meta = JSON.parse(metaEl.textContent);
-  const pages = meta.pages.map((p, i) => ({src: d.querySelector(`#p${i + 1} img`).getAttribute('src'), w: p.w, h: p.h}));
+  const pages = meta.pages.map((p, i) => ({src: d.querySelector(`#p${i + 1} img`).getAttribute('src'), w: p.w, h: p.h, ...(p.g ? {grille: true} : {})}));
   const cmap = mergeCriteria(meta.criteria || []);
   const comments = meta.comments.map(c => ({id: c.id || uid(), page: c.page, x: c.x, y: c.y, type: c.type, text: c.text || '', dur: c.dur || 0, crit: cmap[c.crit] || 'none', ...(isHex(c.col) ? {color: c.col} : {}),
     audio: c.type === 'audio' ? (d.querySelector(`audio[data-n="${c.n}"]`) || {getAttribute: () => null}).getAttribute('src') : null}))
@@ -1903,7 +1981,7 @@ function buildExport(d){
     criteria: criteria.map(c => ({id: c.id, name: c.name, color: c.color})),
     grades: {}, final: '',
     general: {text: d.general.text || '', dur: d.general.audio ? d.general.dur : 0},
-    pages: d.pages.map(p => ({w: p.w, h: p.h})),
+    pages: d.pages.map(p => p.grille ? {w: p.w, h: p.h, g: 1} : {w: p.w, h: p.h}),
     comments: ord.map(c => ({id: c.id, n: num.get(c.id), page: c.page, x: r4(c.x), y: r4(c.y), type: c.type, crit: validCrit(c.crit), ...(isHex(c.color) ? {col: c.color} : {}), text: c.text, dur: c.type === 'audio' ? Math.round(c.dur * 10) / 10 : 0})),
     ink: (d.ink || []).map(st => ({p: st.page, c: st.c, w: st.w, o: st.o, pts: st.pts}))};
   const marker = c => {
@@ -1911,8 +1989,9 @@ function buildExport(d){
     const cr0 = critOf(validCrit(c.crit)), cr = {name: cr0.id === 'none' ? 'Commentaire' : cr0.name};
     return `<a class="mk ${c.type}" id="m${n}" href="#c${n}" data-n="${n}" style="left:${r4(c.x) * 100}%;top:${r4(c.y) * 100}%;--mk:${colorOf(c)}" title="${esc(cr.name)}" aria-label="Commentaire ${n} (${c.type === 'audio' ? 'audio' : 'écrit'}, ${esc(cr.name)})"><span class="ic">${c.type === 'audio' ? ICON.play + ICON.pause : ICON.note}</span><span class="n">${n}</span></a>`;
   };
+  const g0 = d.pages.findIndex(q => q.grille);
   const pagesHtml = d.pages.map((p, i) =>
-    `<section class="page" id="p${i + 1}"><img src="${p.src}" alt="Page ${i + 1}" width="${p.w}" height="${p.h}">${(d.ink || []).some(st => st.page === i) ? inkSvgFor(p.h / p.w, d.ink.filter(st => st.page === i)) : ''}${ord.filter(c => c.page === i).map(marker).join('')}</section>`).join('\n');
+    `${i === g0 ? '<h2 class="gtitle">📋 Grille de correction</h2>' : ''}<section class="page" id="p${i + 1}"><img src="${p.src}" alt="Page ${i + 1}" width="${p.w}" height="${p.h}">${(d.ink || []).some(st => st.page === i) ? inkSvgFor(p.h / p.w, d.ink.filter(st => st.page === i)) : ''}${ord.filter(c => c.page === i).map(marker).join('')}</section>`).join('\n');
   const dots = colorMode === 'crit' && criteria.length > 0;   // couleurs des catégories affichées à l'étudiant ?
   const itemHtml = c => {
     const n = num.get(c.id);
@@ -2085,8 +2164,10 @@ function setupOffline(){
       });
       setInterval(() => reg.update().catch(() => {}), 3600 * 1000);
     }).catch(e => console.warn('hors ligne indisponible', e));
+    // On recharge seulement lors d'une mise à jour (pas à la toute première visite, quand le mode hors ligne s'installe).
+    const hadController = !!navigator.serviceWorker.controller;
     let reloading = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading){ reloading = true; location.reload(); } });
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloading){ reloading = true; location.reload(); } });
   }
   if (standalone || !location.protocol.startsWith('http')) return;
   // Android / Chrome / Edge : bouton « Installer »
