@@ -73,6 +73,12 @@ body.m-ink .page .mk{cursor:pointer}
 .inkbar .sw{width:28px;height:28px;padding:0;border-radius:50%;display:grid;place-items:center}
 .inkbar .sw i{width:16px;height:16px;border-radius:50%;display:block}
 .inkbar .sw.hl i{border-radius:3px;width:18px;height:10px}
+.inkbar .cksz{display:none;gap:3px}
+body.ck .inkbar .cksz{display:inline-flex}
+body.m-ink.ck .page{cursor:crosshair}
+body.ck .inkbar .wd{display:none}
+.inkbar .cksz button{width:34px;height:28px;padding:0;display:grid;place-items:center;line-height:1}
+.inkbar .cksz button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset}
 .inkbar .lab{font-size:13px;color:var(--muted);margin:0 2px 0 4px;white-space:nowrap}
 .inkbar .wd{width:34px;height:28px;padding:0;display:grid;place-items:center}
 .inkbar .wd i{display:block;width:18px;border-radius:9px;background:var(--ink)}
@@ -374,6 +380,9 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
     <button class="wd" data-w="3.5" title="Trait moyen"><i style="height:4px"></i></button>
     <button class="wd" data-w="6" title="Trait épais"><i style="height:7px"></i></button>
     <span class="sep"></span>
+    <button data-ink="check" title="Crochet : cliquez sur le rapport pour placer un crochet (C)">✔<span class="tl"> Crochet</span><kbd>C</kbd></button>
+    <span class="cksz" aria-label="Taille du crochet"><button data-ck="s" title="Petit crochet"><b style="font-size:11px">✔</b></button><button data-ck="m" title="Crochet moyen"><b style="font-size:15px">✔</b></button><button data-ck="l" title="Grand crochet"><b style="font-size:20px">✔</b></button></span>
+    <span class="sep"></span>
     <button data-ink="eraser" title="Gomme : touchez un trait pour l'effacer (E)">🧽<span class="tl"> Gomme</span><kbd>E</kbd></button>
     <button id="inkUndo" title="Annuler le dernier trait (Ctrl+Z)">↶<span class="tl"> Annuler</span></button>
   </div>
@@ -423,9 +432,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
 
   <aside id="bank">
     <div class="crit-head"><h2>⭐ Banque</h2><button id="critNew" title="Ajouter une catégorie pour classer vos commentaires">+ Catégorie</button></div>
-    <p class="hint">Cliquez un commentaire, puis cliquez dans le rapport pour le placer. Glissez ⠿ pour réorganiser ou changer de catégorie ; ✎ pour renommer ou changer la couleur.</p>
     <div id="migr" class="migr" hidden></div>
-    <input id="bankSearch" type="search" placeholder="Rechercher dans la banque…">
     <div class="bank-fold" id="bankFold" hidden><button id="foldAll">Tout replier</button><button id="unfoldAll">Tout déplier</button></div>
     <ul id="bankList"></ul>
     <div class="bank-actions bottom"><span class="ba-l">Nouveau commentaire dans la banque :</span>
@@ -978,12 +985,12 @@ function updateStatus(){
   statusEl.innerHTML = (isTouch() ? {
     audio: '🎤 Touchez l\'endroit voulu, <b>parlez</b>, puis touchez n\'importe où pour arrêter.',
     text: '✏️ Touchez l\'endroit voulu pour écrire un commentaire.',
-    ink: penSeen ? '🖊 Écrivez avec le stylet · faites défiler avec le doigt.' : '🖊 Dessinez avec un doigt · faites défiler avec <b>deux doigts</b>.',
+    ink: inkPrefs.tool === 'check' ? '✔ Touchez le rapport pour placer un crochet.' : penSeen ? '🖊 Écrivez avec le stylet · faites défiler avec le doigt.' : '🖊 Dessinez avec un doigt · faites défiler avec <b>deux doigts</b>.',
     select: '✋ Glissez une pastille pour la déplacer · touchez-la pour la modifier.'
   } : {
     audio: '🎤 Cliquez à l\'endroit voulu, <b>parlez</b>, puis cliquez n\'importe où (ou <b>Espace</b>) pour arrêter. Glissez une pastille pour la déplacer.',
     text: '✏️ Cliquez à l\'endroit voulu pour ajouter un commentaire écrit.',
-    ink: '🖊 Écrivez ou dessinez avec la souris ou un stylet. <b>H</b> : surligneur · la <b>gomme</b> efface un trait en le touchant · <b>Maj</b> enfoncée : trait droit · <b>Ctrl+Z</b> annule. Avec un stylet, faites défiler avec le doigt.',
+    ink: inkPrefs.tool === 'check' ? '✔ Cliquez sur le rapport pour placer un crochet · choisissez la couleur et la taille à gauche · <b>Ctrl+Z</b> annule.' : '🖊 Écrivez ou dessinez avec la souris ou un stylet. <b>H</b> : surligneur · la <b>gomme</b> efface un trait en le touchant · <b>Maj</b> enfoncée : trait droit · <b>Ctrl+Z</b> annule. Avec un stylet, faites défiler avec le doigt.',
     select: '✋ Glissez les pastilles pour les déplacer · cliquez dessus pour les modifier · <b>Suppr</b> pour effacer la pastille sélectionnée.'
   })[mode] + critNote;
 }
@@ -1053,6 +1060,16 @@ pagesEl.addEventListener('pointerdown', e => {
     if (e.pointerType === 'pen') penSeen = true;
     if (penSeen && e.pointerType === 'touch'){ fingerScroll(e); return; }   // avec un stylet, le doigt fait défiler
     if (e.pointerType === 'touch' && inkTouch){ const t = inkTouch; t.abort(); twoFingerScroll(t.id, t.last, e); return; }   // 2e doigt : on défile
+    if (inkPrefs.tool === 'check' && !penEraser){
+      e.preventDefault(); closePop();
+      if (e.pointerType === 'mouse'){ placeCheck(e, pageEl); return; }
+      const sx = e.clientX, sy = e.clientY, id = e.pointerId;
+      const done = () => { removeEventListener('pointerup', up, true); removeEventListener('pointercancel', cancel, true); };
+      const up = ev => { if (ev.pointerId !== id) return; done(); if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 12) placeCheck(ev, pageEl); };
+      const cancel = ev => { if (ev.pointerId === id) done(); };
+      addEventListener('pointerup', up, true); addEventListener('pointercancel', cancel, true);
+      return;
+    }
     e.preventDefault(); closePop(); startInk(e, pageEl, penEraser); return;
   }
   // Doigt ou stylet : on attend un vrai « toucher » (sans glisser) pour ne pas confondre avec un défilement.
@@ -1079,7 +1096,7 @@ function pageTap(e, pageEl){
 
 /* ---------- dessin à main levée ---------- */
 // Trait : {id, page, c: couleur, w: épaisseur (unités : 1000 = largeur de page), o: opacité, pts: [x,y,x,y…] en 0..10000}
-let inkPrefs = {color: '#dc2626', width: 3.5, tool: 'pen', hlColor: '#facc15'};
+let inkPrefs = {color: '#dc2626', width: 3.5, tool: 'pen', hlColor: '#facc15', checkSize: 'm'};
 let inkUndo = [], penSeen = false, inkTouch = null;   // inkTouch : trait en cours fait avec un doigt
 const HL = {c: '#facc15', w: 16, o: 0.5};
 const ratio = i => doc.pages[i].h / doc.pages[i].w;
@@ -1154,6 +1171,19 @@ function startInk(e, pageEl, penEraser){
   if (e.pointerType === 'touch') inkTouch = {id: e.pointerId, last: [e.clientX, e.clientY], abort: () => { detach(); inkTouch = null; abort(); }};
   pageEl.addEventListener('pointermove', onMove); pageEl.addEventListener('pointerup', up); pageEl.addEventListener('pointercancel', up);
 }
+// Crochet : un trait comme les autres (effaçable, annulable, exporté), centré sur le point touché.
+const CHECK = {s: 0.028, m: 0.045, l: 0.07};   // taille en fraction de la largeur de la page
+function placeCheck(e, pageEl){
+  const page = +pageEl.dataset.page, r = pageEl.getBoundingClientRect(), R = ratio(page);
+  const cx = clamp((e.clientX - r.left) / r.width, 0, 1), cy = clamp((e.clientY - r.top) / r.height, 0, 1);
+  const sz = CHECK[inkPrefs.checkSize] || CHECK.m;
+  const P = (dx, dy) => [Math.round(clamp(cx + dx * sz, 0, 1) * 10000), Math.round(clamp(cy + dy * sz / R, 0, 1) * 10000)];
+  // forme : petite branche à gauche, coin en bas, grande branche vers le haut à droite (point doublé = coin net)
+  const pts = [...P(-0.5, 0.05), ...P(-0.15, 0.42), ...P(-0.15, 0.42), ...P(0.5, -0.45)];
+  const st = {id: uid(), page, c: inkPrefs.color, w: Math.max(2.5, sz * 1000 * 0.16), o: 1, pts};
+  doc.ink.push(st); inkUndo.push({type: 'add', id: st.id}); changed(); renderInk(page);
+}
+
 // En mode Dessin au doigt : un deuxième doigt annule le trait commencé et fait défiler la page.
 function twoFingerScroll(id1, pos1, e2){
   const pts = new Map([[id1, pos1], [e2.pointerId, [e2.clientX, e2.clientY]]]);
@@ -1194,15 +1224,19 @@ function fingerScroll(e){
   const up = ev => { if (ev.pointerId !== e.pointerId) return; removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
   addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
 }
-function setInkTool(tool, color, width, hlColor){
+function setInkTool(tool, color, width, hlColor, checkSize){
   if (tool) inkPrefs.tool = tool;
+  if (checkSize) inkPrefs.checkSize = checkSize;
   if (hlColor) inkPrefs.hlColor = hlColor;
   if (color) inkPrefs.color = color;
   if (width) inkPrefs.width = width;
   document.querySelectorAll('#inkBar [data-ink]').forEach(b => {
     const v = b.dataset.ink;
-    b.classList.toggle('on', v === 'eraser' ? inkPrefs.tool === 'eraser' : inkPrefs.tool === 'pen' && v === inkPrefs.color);
+    b.classList.toggle('on', v === 'eraser' ? inkPrefs.tool === 'eraser' : v === 'check' ? inkPrefs.tool === 'check' : (inkPrefs.tool === 'pen' || inkPrefs.tool === 'check') && v === inkPrefs.color);
   });
+  document.querySelectorAll('#inkBar [data-ck]').forEach(b => b.classList.toggle('on', b.dataset.ck === (inkPrefs.checkSize || 'm')));
+  document.body.classList.toggle('ck', inkPrefs.tool === 'check');
+  if (typeof updateStatus === 'function' && statusEl) updateStatus();
   document.querySelectorAll('#inkBar [data-hl]').forEach(b => b.classList.toggle('on', inkPrefs.tool === 'hl' && b.dataset.hl === (inkPrefs.hlColor || HL.c)));
   document.querySelectorAll('#inkBar [data-w]').forEach(b => b.classList.toggle('on', +b.dataset.w === inkPrefs.width && inkPrefs.tool === 'pen'));
   document.body.classList.toggle('eraser', inkPrefs.tool === 'eraser');
@@ -1213,8 +1247,10 @@ $('#inkBar').addEventListener('click', e => {
   if (b.id === 'inkUndo'){ undoInk(); return; }
   if (b.dataset.w) setInkTool('pen', null, +b.dataset.w);
   else if (b.dataset.ink === 'eraser') setInkTool(inkPrefs.tool === 'eraser' ? 'pen' : 'eraser');
+  else if (b.dataset.ink === 'check') setInkTool(inkPrefs.tool === 'check' ? 'pen' : 'check');
+  else if (b.dataset.ck) setInkTool('check', null, null, null, b.dataset.ck);
   else if (b.dataset.hl) setInkTool('hl', null, null, b.dataset.hl);
-  else setInkTool('pen', b.dataset.ink);
+  else setInkTool(inkPrefs.tool === 'check' ? 'check' : 'pen', b.dataset.ink);   // la couleur sert aussi au crochet
 });
 
 function dragMarker(e, mk){
@@ -1490,7 +1526,7 @@ function bankItemHtml(it){
     </li>`;
 }
 function renderBank(){
-  const q = $('#bankSearch').value.trim().toLowerCase();
+  const q = '';   // (recherche retirée)
   const list = bank.filter(it => !q || (it.name + ' ' + (it.text || '') + ' ' + critOf(validCrit(it.crit)).name).toLowerCase().includes(q));
   const ul = $('#bankList');
   $('#bankFold').hidden = !criteria.length || !!q;
@@ -1510,7 +1546,6 @@ function renderBank(){
 }
 // Mémoriser les critères repliés (sauf pendant une recherche, où tout est déplié)
 $('#bankList').addEventListener('toggle', e => {
-  if ($('#bankSearch').value.trim()) return;
   const li = e.target.closest('.sec'); if (!li) return;
   if (e.target.open) collapsed.delete(li.dataset.crit); else collapsed.add(li.dataset.crit);
   safe(DB.set('collapsed', [...collapsed]));
@@ -1607,7 +1642,6 @@ function bankDragEnd(){
 }
 
 function disarm(update = true){ armed = null; document.body.classList.remove('armed'); renderBank(); if (update) updateStatus(); }
-$('#bankSearch').addEventListener('input', renderBank);
 
 /* dialogue de la banque */
 let dlg = null;
@@ -2139,6 +2173,7 @@ addEventListener('keydown', e => {
   if (k === 'a') setMode('audio'); else if (k === 't') setMode('text'); else if (k === 'v') setMode('select'); else if (k === 'd') setMode('ink');
   else if (k === 'e' && mode === 'ink') setInkTool(inkPrefs.tool === 'eraser' ? 'pen' : 'eraser');
   else if (k === 'h'){ if (mode !== 'ink') setMode('ink'); setInkTool(inkPrefs.tool === 'hl' ? 'pen' : 'hl'); }
+  else if (k === 'c'){ if (mode !== 'ink') setMode('ink'); setInkTool(inkPrefs.tool === 'check' ? 'pen' : 'check'); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId){ e.preventDefault(); deleteComment(selectedId); }
 });
 addEventListener('beforeunload', e => {
