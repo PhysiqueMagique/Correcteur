@@ -272,6 +272,8 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
 
 #toast{position:fixed;left:50%;top:calc(var(--topH) + 14px);transform:translateX(-50%);z-index:60;background:#1f2328;color:#fff;padding:9px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:13.5px;max-width:min(560px,90vw);opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.show{opacity:1}
+#toast.act{pointer-events:auto}
+#toast button{margin-left:10px;padding:3px 10px;background:#fff;color:#1f2328;border:0;font-weight:600}
 #toast.err{background:#991b1b}
 #progress{position:fixed;inset:0;z-index:70;background:rgba(236,232,225,.75);display:grid;place-items:center;font-size:15px;font-weight:600}
 #progress[hidden]{display:none}
@@ -384,7 +386,7 @@ body.bank-dragging{user-select:none;-webkit-user-select:none}
     <span class="cksz" aria-label="Taille du crochet"><button data-ck="s" title="Petit crochet"><b style="font-size:11px">✔</b></button><button data-ck="m" title="Crochet moyen"><b style="font-size:15px">✔</b></button><button data-ck="l" title="Grand crochet"><b style="font-size:20px">✔</b></button></span>
     <span class="sep"></span>
     <button data-ink="eraser" title="Gomme : touchez un trait pour l'effacer (E)">🧽<span class="tl"> Gomme</span><kbd>E</kbd></button>
-    <button id="inkUndo" title="Annuler le dernier trait (Ctrl+Z)">↶<span class="tl"> Annuler</span></button>
+    <button id="inkUndo" title="Annuler la dernière action : trait, crochet ou commentaire supprimé (Ctrl+Z)">↶<span class="tl"> Annuler</span></button>
   </div>
   <div class="status" id="status"></div>
   <div class="tabs" id="tabs" hidden>
@@ -683,9 +685,10 @@ const fmt = s => { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const byId = id => doc && doc.comments.find(c => c.id === id);
 
-function toast(msg, kind){
-  const t = $('#toast'); t.textContent = msg; t.className = 'show' + (kind ? ' ' + kind : '');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.className = '', kind === 'err' ? 6000 : 2600);
+function toast(msg, kind, action){
+  const t = $('#toast'); t.textContent = msg; t.className = 'show' + (kind ? ' ' + kind : '') + (action ? ' act' : '');
+  if (action){ const b = document.createElement('button'); b.textContent = action.label; b.onclick = () => { t.className = ''; action.fn(); }; t.append(' ', b); }
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.className = '', kind === 'err' ? 6000 : action ? 6000 : 2600);
 }
 function progress(msg){ const p = $('#progress'); if (msg){ p.textContent = msg; p.hidden = false; } else p.hidden = true; }
 
@@ -1214,6 +1217,14 @@ function eraseAt(page, x, y, W, removed){
 function undoInk(){
   const op = inkUndo.pop(); if (!op || !doc){ toast('Rien à annuler.'); return; }
   const pages = new Set();
+  if (op.type === 'delc'){
+    const c = op.comment;
+    if (!doc.comments.some(k => k.id === c.id)) doc.comments.splice(Math.min(op.index, doc.comments.length), 0, c);
+    selectedId = c.id; changed(); renderMarkers();
+    const m = markerFor(c.id); if (m) m.scrollIntoView({block: 'center', behavior: 'smooth'});
+    toast('Commentaire rétabli.');
+    return;
+  }
   if (op.type === 'add'){ const i = doc.ink.findIndex(st => st.id === op.id); if (i >= 0){ pages.add(doc.ink[i].page); doc.ink.splice(i, 1); } }
   else [...op.strokes].reverse().forEach(({st, index}) => { doc.ink.splice(Math.min(index, doc.ink.length), 0, st); pages.add(st.page); });
   pages.forEach(renderInk); changed();
@@ -1293,9 +1304,12 @@ function placeBankItem(itemId, page, x, y){
 }
 function deleteComment(id){
   if (!doc) return;
-  doc.comments = doc.comments.filter(c => c.id !== id);
+  const i = doc.comments.findIndex(c => c.id === id); if (i < 0) return;
+  const [c] = doc.comments.splice(i, 1);
+  inkUndo.push({type: 'delc', comment: c, index: i});          // Ctrl+Z (ou « Annuler ») le remet
   if (selectedId === id) selectedId = null;
   closePop(true); changed(); renderMarkers();
+  toast('Commentaire supprimé.', null, {label: 'Annuler', fn: undoInk});
 }
 
 /* Ajout direct à la banque depuis une pastille : même catégorie, nom tiré du texte (modifiable ensuite dans la banque) */
