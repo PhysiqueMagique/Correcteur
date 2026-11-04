@@ -1171,16 +1171,16 @@ function startInk(e, pageEl, penEraser){
   if (e.pointerType === 'touch') inkTouch = {id: e.pointerId, last: [e.clientX, e.clientY], abort: () => { detach(); inkTouch = null; abort(); }};
   pageEl.addEventListener('pointermove', onMove); pageEl.addEventListener('pointerup', up); pageEl.addEventListener('pointercancel', up);
 }
-// Crochet : un trait comme les autres (effaçable, annulable, exporté), centré sur le point touché.
-const CHECK = {s: 0.028, m: 0.045, l: 0.07};   // taille en fraction de la largeur de la page
+// Crochet : un trait comme les autres (effaçable, annulable, exporté), dont le coin du bas est au point touché.
+const CHECK = {s: 0.018, m: 0.028, l: 0.042};   // taille en fraction de la largeur de la page
 function placeCheck(e, pageEl){
   const page = +pageEl.dataset.page, r = pageEl.getBoundingClientRect(), R = ratio(page);
   const cx = clamp((e.clientX - r.left) / r.width, 0, 1), cy = clamp((e.clientY - r.top) / r.height, 0, 1);
   const sz = CHECK[inkPrefs.checkSize] || CHECK.m;
   const P = (dx, dy) => [Math.round(clamp(cx + dx * sz, 0, 1) * 10000), Math.round(clamp(cy + dy * sz / R, 0, 1) * 10000)];
-  // forme : petite branche à gauche, coin en bas, grande branche vers le haut à droite (point doublé = coin net)
-  const pts = [...P(-0.5, 0.05), ...P(-0.15, 0.42), ...P(-0.15, 0.42), ...P(0.5, -0.45)];
-  const st = {id: uid(), page, c: inkPrefs.color, w: Math.max(2.5, sz * 1000 * 0.16), o: 1, pts};
+  // forme : le point cliqué est le coin du bas ; petite branche à gauche, grande branche vers le haut à droite (point doublé = coin net)
+  const pts = [...P(-0.35, -0.37), ...P(0, 0), ...P(0, 0), ...P(0.65, -0.87)];
+  const st = {id: uid(), page, c: inkPrefs.color, w: Math.max(2, sz * 1000 * 0.16), o: 1, pts};
   doc.ink.push(st); inkUndo.push({type: 'add', id: st.id}); changed(); renderInk(page);
 }
 
